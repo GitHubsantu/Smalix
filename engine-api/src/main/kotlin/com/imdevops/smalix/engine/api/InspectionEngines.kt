@@ -3,6 +3,9 @@ package com.imdevops.smalix.engine.api
 import com.imdevops.smalix.core.model.AnalysisRequest
 import com.imdevops.smalix.core.model.ApkAnalysis
 import com.imdevops.smalix.core.model.DexInfo
+import com.imdevops.smalix.core.model.DexClass
+import com.imdevops.smalix.core.model.DexClassQuery
+import com.imdevops.smalix.core.model.DexIndex
 import com.imdevops.smalix.core.model.InspectionResult
 import com.imdevops.smalix.core.model.ManifestInfo
 import com.imdevops.smalix.core.model.ManifestDraft
@@ -21,6 +24,14 @@ interface ManifestParser {
 
 interface DexDetector {
     suspend fun detect(apk: ValidatedApk): InspectionResult<DexInfo>
+}
+
+interface DexReader {
+    suspend fun index(apk: ValidatedApk): InspectionResult<DexIndex>
+}
+
+interface DexSearch {
+    fun find(index: DexIndex, query: DexClassQuery): List<DexClass>
 }
 
 interface ManifestDraftEditor {

@@ -27,4 +27,11 @@ class InspectionModelsTest {
             AnalysisFailure.UnsupportedFormat(InputFormat.XAPK, " ")
         }
     }
+
+    @Test
+    fun `dex model rejects malformed entry names and duplicate classes`() {
+        assertThrows(IllegalArgumentException::class.java) { DexEntry("classes01.dex", 0) }
+        val clazz = DexClass("classes.dex", "Lsample/Main;", 0, emptyList(), emptyList())
+        assertThrows(IllegalArgumentException::class.java) { DexIndex(listOf(DexEntry("classes.dex", 1)), listOf(clazz, clazz)) }
+    }
 }
