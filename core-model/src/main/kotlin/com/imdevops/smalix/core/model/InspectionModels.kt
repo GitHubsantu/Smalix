@@ -51,6 +51,12 @@ data class ApkAnalysis(
     val warnings: List<AnalysisWarning>,
 )
 
+data class InspectionSummary(
+    val apk: ApkAnalysis,
+    val manifest: ManifestInfo,
+    val dex: DexInfo,
+)
+
 data class ValidatedApk(
     val path: Path,
     val sha256: String,

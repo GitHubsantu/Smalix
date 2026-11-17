@@ -20,6 +20,9 @@ interface ProjectRepository {
 interface WorkspaceStore {
     suspend fun create(projectId: ProjectId): Workspace
 
+    /** Reconstructs a complete fixed workspace for an existing project. */
+    suspend fun open(projectId: ProjectId): Workspace
+
     /** Copies once into [Workspace.originalApk]; implementations must not overwrite it. */
     suspend fun copyOriginal(sourceApk: Path, workspace: Workspace)
 

@@ -1,6 +1,6 @@
 # v0.1 design — inspection foundation
 
-Status: proposed; no feature implementation or test has been run as part of this design step.
+Status: approved design; implementation and test status are recorded in `PROGRESS.md`.
 
 ## 1. Modules and dependency graph
 
@@ -17,8 +17,8 @@ engine-apk  engine-manifest  engine-dex
 
 feature-home / feature-projects / feature-inspector --> core-model, engine-api
 app --> all modules (composition and desktop entry point)
-core-database --> core-model, core-common
-core-storage  --> core-model, core-common
+core-database --> core-model, core-common, engine-api
+core-storage  --> core-model, core-common, engine-api
 ```
 
 `core-model`: immutable domain/result models. `core-common`: errors, clocks, hashing and cancellation helpers. `engine-api`: inspection plus project/workspace contracts (`ApkAnalyzer`, `ManifestParser`, `DexDetector`, `ProjectRepository`, `WorkspaceStore`). `engine-*`: UI-free implementations. `core-database`: SQLite `ProjectRepository` implementation. `core-storage`: `WorkspaceStore` implementation. Features must not depend on `engine-*`, `core-database`, or `core-storage`; they receive contracts from `app`.
@@ -88,7 +88,7 @@ No new dependency is approved by this document or added to Gradle. Proposed cand
 
 | Need | Candidate | License stated by upstream | Desktop/JVM 17 compatibility | Status |
 |---|---|---|---|---|
-| SQLite driver | `org.xerial:sqlite-jdbc` | Apache-2.0 (must verify from selected artifact) | untested | Not verified |
+| SQLite driver | `org.xerial:sqlite-jdbc:3.47.2.0` | Apache-2.0 embedded in artifact; also retain embedded `LICENSE.zentus` notice when packaging | JDK 17 CRUD smoke test passed | Verified 2026-11-17 |
 | SQL mapping | SQLDelight | Apache-2.0 (must verify selected version/artifact) | untested | Not verified |
 | Binary AXML | Small in-house parser | project-owned | design only | Not verified; preferred to avoid a new parser dependency |
 | DEX parsing (future depth) | dexlib2 | BSD-3-Clause (must verify selected artifact) | untested | Not verified; v0.1 detector needs no DEX library |
