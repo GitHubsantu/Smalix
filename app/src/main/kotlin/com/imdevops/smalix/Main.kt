@@ -76,8 +76,13 @@ private fun SmalixScreen() {
     var draftLabel by remember { mutableStateOf("") }
     var draftVersionName by remember { mutableStateOf("") }
     var draftVersionCode by remember { mutableStateOf("") }
+    var draftMinSdk by remember { mutableStateOf("") }
+    var draftTargetSdk by remember { mutableStateOf("") }
     var newActivity by remember { mutableStateOf("") }
     var newPermission by remember { mutableStateOf("") }
+    var removalName by remember { mutableStateOf("") }
+    var removalIsActivity by remember { mutableStateOf(true) }
+    var removalConfirmation by remember { mutableStateOf(false) }
     var draftValidation by remember { mutableStateOf("") }
     var discardConfirmation by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -107,7 +112,7 @@ private fun SmalixScreen() {
             Button(enabled = !busy && selected != null, onClick = { val project = selected ?: return@Button; scope.launch {
                 busy = true; status = "Opening staged manifest draft..."
                 when (val result = withContext(Dispatchers.IO) { drafts.openOrCreate(project.id, Instant.now().plusSeconds(120)) }) {
-                    is DraftSessionResult.Ready -> { draft = result.draft; draftLabel = when (val label = result.draft.label) { is ManifestLabel.Literal -> label.value; is ManifestLabel.ResourceReference -> label.value; null -> "" }; draftVersionName = result.draft.versionName.orEmpty(); draftVersionCode = result.draft.versionCode?.toString().orEmpty(); draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Draft saved under work/. original.apk is unchanged." }
+                    is DraftSessionResult.Ready -> { draft = result.draft; draftLabel = when (val label = result.draft.label) { is ManifestLabel.Literal -> label.value; is ManifestLabel.ResourceReference -> label.value; null -> "" }; draftVersionName = result.draft.versionName.orEmpty(); draftVersionCode = result.draft.versionCode?.toString().orEmpty(); draftMinSdk = result.draft.minSdk?.toString().orEmpty(); draftTargetSdk = result.draft.targetSdk?.toString().orEmpty(); draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Draft saved under work/. original.apk is unchanged." }
                     DraftSessionResult.ProjectNotFound -> status = "Project no longer exists."
                     DraftSessionResult.ProjectNotReady -> status = "Inspect successfully before editing a draft."
                     is DraftSessionResult.WorkspaceUnavailable -> status = "Workspace unavailable: ${result.message}"
@@ -132,14 +137,22 @@ private fun SmalixScreen() {
                     OutlinedTextField(draftLabel, { draftLabel = it }, Modifier.fillMaxWidth(), label = { Text("App label") }, enabled = !busy)
                     OutlinedTextField(draftVersionName, { draftVersionName = it }, Modifier.fillMaxWidth(), label = { Text("Version name") }, enabled = !busy)
                     OutlinedTextField(draftVersionCode, { draftVersionCode = it }, Modifier.fillMaxWidth(), label = { Text("Version code") }, enabled = !busy)
+                    OutlinedTextField(draftMinSdk, { draftMinSdk = it }, Modifier.fillMaxWidth(), label = { Text("Minimum SDK") }, enabled = !busy)
+                    OutlinedTextField(draftTargetSdk, { draftTargetSdk = it }, Modifier.fillMaxWidth(), label = { Text("Target SDK") }, enabled = !busy)
                     OutlinedTextField(newActivity, { newActivity = it }, Modifier.fillMaxWidth(), label = { Text("Add activity declaration") }, enabled = !busy)
                     OutlinedTextField(newPermission, { newPermission = it }, Modifier.fillMaxWidth(), label = { Text("Add uses-permission") }, enabled = !busy)
+                    OutlinedTextField(removalName, { removalName = it }, Modifier.fillMaxWidth(), label = { Text("Activity or permission name to remove") }, enabled = !busy)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(enabled = !busy && removalName.isNotBlank(), onClick = { removalIsActivity = true; removalConfirmation = true }) { Text("Remove activity...") }
+                        Button(enabled = !busy && removalName.isNotBlank(), onClick = { removalIsActivity = false; removalConfirmation = true }) { Text("Remove permission...") }
+                    }
                     Button(enabled = !busy, onClick = { scope.launch {
                         busy = true
                         val edits = buildList {
                             add(ManifestEdit.SetLabel(draftLabel.takeIf(String::isNotBlank)?.let { if (it.startsWith("@")) ManifestLabel.ResourceReference(it) else ManifestLabel.Literal(it) }))
                             add(ManifestEdit.SetVersionName(draftVersionName.ifBlank { null }))
                             draftVersionCode.toLongOrNull()?.let { add(ManifestEdit.SetVersionCode(it)) }
+                            if (draftMinSdk.toIntOrNull() != null || draftTargetSdk.toIntOrNull() != null) add(ManifestEdit.SetSdk(draftMinSdk.toIntOrNull(), draftTargetSdk.toIntOrNull()))
                             newActivity.takeIf(String::isNotBlank)?.let { add(ManifestEdit.AddActivity(ActivityInfo(it, null, null))) }
                             newPermission.takeIf(String::isNotBlank)?.let { add(ManifestEdit.AddPermission(PermissionInfo(it))) }
                         }
@@ -164,6 +177,13 @@ private fun SmalixScreen() {
         text = { Text("Only work/manifest-draft.json and its metadata will be deleted. original.apk is unchanged.") },
         confirmButton = { Button(onClick = { val id = draft!!.projectId; scope.launch { busy = true; discardConfirmation = false; when (withContext(Dispatchers.IO) { drafts.discard(id) }) { DraftDiscardResult.Discarded -> { draft = null; status = "Draft discarded. original.apk is unchanged." }; is DraftDiscardResult.Unavailable -> status = "Draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
         dismissButton = { Button(onClick = { discardConfirmation = false }) { Text("Cancel") } },
+    )
+    if (removalConfirmation && draft != null) AlertDialog(
+        onDismissRequest = { removalConfirmation = false },
+        title = { Text(if (removalIsActivity) "Remove activity declaration?" else "Remove uses-permission?") },
+        text = { Text("This changes only the staged manifest draft. original.apk is unchanged.") },
+        confirmButton = { Button(onClick = { val current = draft!!; val edit = if (removalIsActivity) ManifestEdit.RemoveActivity(removalName) else ManifestEdit.RemovePermission(removalName); scope.launch { busy = true; removalConfirmation = false; when (val result = withContext(Dispatchers.IO) { drafts.edit(current.projectId, edit) }) { is DraftEditResult.Saved -> { draft = result.draft; draftValidation = result.validation.issues.joinToString("\n") { it.message }; removalName = ""; status = "Draft removal saved. original.apk is unchanged." }; is DraftEditResult.Rejected -> { draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Draft removal was rejected." }; is DraftEditResult.Unavailable -> status = "Draft is unavailable." }; busy = false } }) { Text("Remove from draft") } },
+        dismissButton = { Button(onClick = { removalConfirmation = false }) { Text("Cancel") } },
     )
 }
 
