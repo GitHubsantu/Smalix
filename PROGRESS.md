@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Complete v0.2 slice 4: add editable draft fields and explicit save actions to the desktop UI, then manually verify with an owned APK. The current UI only opens/views/discards a staged draft with confirmation.
+Manually verify the completed v0.2 staged manifest editor with an owned APK, including save, validation rejection, and confirmed discard. No APK rewrite, rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -133,3 +133,5 @@ Complete v0.2 slice 4: add editable draft fields and explicit save actions to th
 - Test log (2026-11-17): `./gradlew.bat :app:test --no-daemon --console=plain` with JDK 17: **BUILD SUCCESSFUL in 57s** (`26 actionable tasks: 2 executed, 24 up-to-date`). Tests cover matching-SHA draft creation, rejected invalid edits, valid edit persistence, discard, stale reinspection SHA, and ensuring an edit without a staged draft does not create one. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed. Gradle reported deprecated features warning; no test failures.
 - 2026-11-17: Started v0.2 desktop wiring: the UI can open/create a staged manifest draft, shows its staged-only status, and asks for confirmation before discard. It still has no editable fields or save-edit action, so slice 4 is not complete and no manual verification has been claimed.
 - Test log (2026-11-17): `./gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 46s** (`19 actionable tasks: 1 executed, 18 up-to-date`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation. This checks compilation only; no UI interaction or automated test was run for this partial UI wiring.
+- 2026-11-17: Completed the desktop staged draft controls: editable label, version name/code, activity declaration, and uses-permission fields save only to the staged draft; validation messages are displayed; discard remains confirmation-gated. The UI labels staged work and states that `original.apk` is unchanged. No APK rewrite capability was added.
+- Test log (2026-11-17): `./gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 50s** (`19 actionable tasks: 1 executed, 18 up-to-date`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation. This checks compilation only; desktop interactions have not been manually verified.

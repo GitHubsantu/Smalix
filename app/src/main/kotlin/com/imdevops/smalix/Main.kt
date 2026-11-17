@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +33,10 @@ import com.imdevops.smalix.core.database.SqliteProjectRepository
 import com.imdevops.smalix.core.model.InspectionResult
 import com.imdevops.smalix.core.model.InspectionSummary
 import com.imdevops.smalix.core.model.ManifestDraft
+import com.imdevops.smalix.core.model.ManifestEdit
+import com.imdevops.smalix.core.model.ManifestLabel
+import com.imdevops.smalix.core.model.ActivityInfo
+import com.imdevops.smalix.core.model.PermissionInfo
 import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ZipEntryInfo
 import com.imdevops.smalix.core.storage.FileSystemWorkspaceStore
@@ -68,6 +73,12 @@ private fun SmalixScreen() {
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
     var draft by remember { mutableStateOf<ManifestDraft?>(null) }
+    var draftLabel by remember { mutableStateOf("") }
+    var draftVersionName by remember { mutableStateOf("") }
+    var draftVersionCode by remember { mutableStateOf("") }
+    var newActivity by remember { mutableStateOf("") }
+    var newPermission by remember { mutableStateOf("") }
+    var draftValidation by remember { mutableStateOf("") }
     var discardConfirmation by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     fun refresh() = scope.launch { projects = withContext(Dispatchers.IO) { repository.list() }; selected = projects.firstOrNull { it.id == selected?.id } ?: projects.firstOrNull() }
@@ -96,7 +107,7 @@ private fun SmalixScreen() {
             Button(enabled = !busy && selected != null, onClick = { val project = selected ?: return@Button; scope.launch {
                 busy = true; status = "Opening staged manifest draft..."
                 when (val result = withContext(Dispatchers.IO) { drafts.openOrCreate(project.id, Instant.now().plusSeconds(120)) }) {
-                    is DraftSessionResult.Ready -> { draft = result.draft; status = "Draft saved under work/. original.apk is unchanged." }
+                    is DraftSessionResult.Ready -> { draft = result.draft; draftLabel = when (val label = result.draft.label) { is ManifestLabel.Literal -> label.value; is ManifestLabel.ResourceReference -> label.value; null -> "" }; draftVersionName = result.draft.versionName.orEmpty(); draftVersionCode = result.draft.versionCode?.toString().orEmpty(); draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Draft saved under work/. original.apk is unchanged." }
                     DraftSessionResult.ProjectNotFound -> status = "Project no longer exists."
                     DraftSessionResult.ProjectNotReady -> status = "Inspect successfully before editing a draft."
                     is DraftSessionResult.WorkspaceUnavailable -> status = "Workspace unavailable: ${result.message}"
@@ -117,6 +128,31 @@ private fun SmalixScreen() {
             ) {
                 selected?.let { Text("Selected: ${it.displayName}\nSHA-256: ${it.originalSha256 ?: "not analyzed"}") }
                 draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
+                draft?.let { current ->
+                    OutlinedTextField(draftLabel, { draftLabel = it }, Modifier.fillMaxWidth(), label = { Text("App label") }, enabled = !busy)
+                    OutlinedTextField(draftVersionName, { draftVersionName = it }, Modifier.fillMaxWidth(), label = { Text("Version name") }, enabled = !busy)
+                    OutlinedTextField(draftVersionCode, { draftVersionCode = it }, Modifier.fillMaxWidth(), label = { Text("Version code") }, enabled = !busy)
+                    OutlinedTextField(newActivity, { newActivity = it }, Modifier.fillMaxWidth(), label = { Text("Add activity declaration") }, enabled = !busy)
+                    OutlinedTextField(newPermission, { newPermission = it }, Modifier.fillMaxWidth(), label = { Text("Add uses-permission") }, enabled = !busy)
+                    Button(enabled = !busy, onClick = { scope.launch {
+                        busy = true
+                        val edits = buildList {
+                            add(ManifestEdit.SetLabel(draftLabel.takeIf(String::isNotBlank)?.let { if (it.startsWith("@")) ManifestLabel.ResourceReference(it) else ManifestLabel.Literal(it) }))
+                            add(ManifestEdit.SetVersionName(draftVersionName.ifBlank { null }))
+                            draftVersionCode.toLongOrNull()?.let { add(ManifestEdit.SetVersionCode(it)) }
+                            newActivity.takeIf(String::isNotBlank)?.let { add(ManifestEdit.AddActivity(ActivityInfo(it, null, null))) }
+                            newPermission.takeIf(String::isNotBlank)?.let { add(ManifestEdit.AddPermission(PermissionInfo(it))) }
+                        }
+                        var latest = current
+                        edits.forEach { edit -> when (val result = withContext(Dispatchers.IO) { drafts.edit(latest.projectId, edit) }) {
+                            is DraftEditResult.Saved -> { latest = result.draft; draftValidation = result.validation.issues.joinToString("\n") { it.message } }
+                            is DraftEditResult.Rejected -> { draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Draft was not saved; fix validation errors." }
+                            is DraftEditResult.Unavailable -> status = "Draft is unavailable."
+                        } }
+                        draft = latest; newActivity = ""; newPermission = ""; if (draftValidation.isBlank()) status = "Draft changes saved under work/. original.apk is unchanged."; busy = false
+                    } }) { Text("Save draft changes") }
+                    if (draftValidation.isNotBlank()) InspectorSection("Draft validation", draftValidation)
+                }
                 if (draft != null) Button(enabled = !busy, onClick = { discardConfirmation = true }) { Text("Discard draft...") }
                 if (summary != null) SummaryPanel(summary!!) else Text("No in-memory inspection result yet.")
             }
