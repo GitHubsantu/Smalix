@@ -1,5 +1,6 @@
 package com.imdevops.smalix.core.model
 
+import java.time.Instant
 import java.util.UUID
 
 data class ManifestDraft(
@@ -72,3 +73,25 @@ data class ManifestIssue(
 )
 
 enum class ManifestIssueSeverity { ERROR, WARNING }
+
+data class ManifestDraftMetadata(
+    val projectId: ProjectId,
+    val draftId: UUID,
+    val originalApkSha256: String,
+    val relativePath: RelativePath,
+    val revision: Long,
+    val createdAt: Instant,
+    val updatedAt: Instant,
+    val validationStatus: ManifestDraftValidationStatus,
+) {
+    init {
+        require(SHA256.matches(originalApkSha256)) { "Original APK SHA-256 must be 64 hexadecimal characters." }
+        require(revision >= 0)
+    }
+
+    companion object {
+        private val SHA256 = Regex("^[0-9A-Fa-f]{64}$")
+    }
+}
+
+enum class ManifestDraftValidationStatus { VALID, INVALID }

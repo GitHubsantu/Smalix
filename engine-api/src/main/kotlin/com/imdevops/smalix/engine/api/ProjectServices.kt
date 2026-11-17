@@ -3,6 +3,7 @@ package com.imdevops.smalix.engine.api
 import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ProjectId
 import com.imdevops.smalix.core.model.ManifestDraft
+import com.imdevops.smalix.core.model.ManifestDraftMetadata
 import com.imdevops.smalix.core.model.Workspace
 import java.nio.file.Path
 
@@ -39,4 +40,10 @@ interface ManifestDraftStore {
     suspend fun save(workspace: Workspace, draft: ManifestDraft)
 
     suspend fun discard(workspace: Workspace)
+}
+
+interface ManifestDraftRepository {
+    suspend fun findDraft(projectId: ProjectId): ManifestDraftMetadata?
+    suspend fun save(metadata: ManifestDraftMetadata)
+    suspend fun deleteManifestDraft(projectId: ProjectId)
 }

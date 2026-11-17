@@ -4,14 +4,17 @@ import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ProjectAnalysisStatus
 import com.imdevops.smalix.core.model.ProjectId
 import com.imdevops.smalix.core.model.RelativePath
+import com.imdevops.smalix.core.model.ManifestDraftMetadata
+import com.imdevops.smalix.core.model.ManifestDraftValidationStatus
 import com.imdevops.smalix.engine.api.ProjectRepository
+import com.imdevops.smalix.engine.api.ManifestDraftRepository
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.Instant
 import java.util.UUID
 
-class SqliteProjectRepository(databasePath: Path) : ProjectRepository {
+class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestDraftRepository {
     private val url = "jdbc:sqlite:${databasePath.toAbsolutePath().normalize()}"
 
     init {
@@ -82,6 +85,38 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository {
         }
     }
 
+    override suspend fun findDraft(projectId: ProjectId): ManifestDraftMetadata? = connection().use { connection ->
+        connection.prepareStatement("SELECT * FROM manifest_drafts WHERE project_id = ?").use { statement ->
+            statement.setString(1, projectId.value.toString())
+            statement.executeQuery().use { results -> if (results.next()) results.draftMetadata() else null }
+        }
+    }
+
+    override suspend fun save(metadata: ManifestDraftMetadata) {
+        connection().use { connection ->
+            connection.prepareStatement(
+                """INSERT INTO manifest_drafts (project_id, draft_id, original_apk_sha256, relative_path, revision, created_at_ms, updated_at_ms, validation_status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(project_id) DO UPDATE SET draft_id=excluded.draft_id, original_apk_sha256=excluded.original_apk_sha256,
+                   relative_path=excluded.relative_path, revision=excluded.revision, updated_at_ms=excluded.updated_at_ms, validation_status=excluded.validation_status""",
+            ).use { statement ->
+                statement.setString(1, metadata.projectId.value.toString()); statement.setString(2, metadata.draftId.toString())
+                statement.setString(3, metadata.originalApkSha256); statement.setString(4, metadata.relativePath.value)
+                statement.setLong(5, metadata.revision); statement.setLong(6, metadata.createdAt.toEpochMilli())
+                statement.setLong(7, metadata.updatedAt.toEpochMilli()); statement.setString(8, metadata.validationStatus.name)
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    override suspend fun deleteManifestDraft(projectId: ProjectId) {
+        connection().use { connection ->
+            connection.prepareStatement("DELETE FROM manifest_drafts WHERE project_id = ?").use { statement ->
+                statement.setString(1, projectId.value.toString()); statement.executeUpdate()
+            }
+        }
+    }
+
     private fun connection(): Connection = DriverManager.getConnection(url).also { connection ->
         connection.createStatement().use { it.execute("PRAGMA foreign_keys = ON") }
     }
@@ -101,6 +136,14 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository {
                     original_size_bytes INTEGER,
                     analysis_status TEXT NOT NULL,
                     analysis_error TEXT
+                )""",
+            )
+            statement.execute(
+                """CREATE TABLE IF NOT EXISTS manifest_drafts (
+                    project_id TEXT PRIMARY KEY NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    draft_id TEXT NOT NULL, original_apk_sha256 TEXT NOT NULL, relative_path TEXT NOT NULL,
+                    revision INTEGER NOT NULL, created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL,
+                    validation_status TEXT NOT NULL
                 )""",
             )
         }
@@ -138,6 +181,13 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository {
         originalSizeBytes = getLongOrNull("original_size_bytes"),
         analysisStatus = ProjectAnalysisStatus.valueOf(getString("analysis_status")),
         analysisError = getString("analysis_error"),
+    )
+
+    private fun java.sql.ResultSet.draftMetadata() = ManifestDraftMetadata(
+        projectId = ProjectId(UUID.fromString(getString("project_id"))), draftId = UUID.fromString(getString("draft_id")),
+        originalApkSha256 = getString("original_apk_sha256"), relativePath = RelativePath.of(getString("relative_path")),
+        revision = getLong("revision"), createdAt = Instant.ofEpochMilli(getLong("created_at_ms")),
+        updatedAt = Instant.ofEpochMilli(getLong("updated_at_ms")), validationStatus = ManifestDraftValidationStatus.valueOf(getString("validation_status")),
     )
 
     private fun java.sql.ResultSet.getLongOrNull(column: String): Long? = getLong(column).takeUnless { wasNull() }
