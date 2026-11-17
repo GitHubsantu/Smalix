@@ -79,6 +79,9 @@ private fun SmalixScreen() {
     var draftMinSdk by remember { mutableStateOf("") }
     var draftTargetSdk by remember { mutableStateOf("") }
     var newActivity by remember { mutableStateOf("") }
+    var updateActivityName by remember { mutableStateOf("") }
+    var updateActivityExported by remember { mutableStateOf("") }
+    var updateActivityEnabled by remember { mutableStateOf("") }
     var newPermission by remember { mutableStateOf("") }
     var removalName by remember { mutableStateOf("") }
     var removalIsActivity by remember { mutableStateOf(true) }
@@ -140,6 +143,18 @@ private fun SmalixScreen() {
                     OutlinedTextField(draftMinSdk, { draftMinSdk = it }, Modifier.fillMaxWidth(), label = { Text("Minimum SDK") }, enabled = !busy)
                     OutlinedTextField(draftTargetSdk, { draftTargetSdk = it }, Modifier.fillMaxWidth(), label = { Text("Target SDK") }, enabled = !busy)
                     OutlinedTextField(newActivity, { newActivity = it }, Modifier.fillMaxWidth(), label = { Text("Add activity declaration") }, enabled = !busy)
+                    OutlinedTextField(updateActivityName, { updateActivityName = it }, Modifier.fillMaxWidth(), label = { Text("Existing activity name to update") }, enabled = !busy)
+                    OutlinedTextField(updateActivityExported, { updateActivityExported = it }, Modifier.fillMaxWidth(), label = { Text("exported: true, false, or blank") }, enabled = !busy)
+                    OutlinedTextField(updateActivityEnabled, { updateActivityEnabled = it }, Modifier.fillMaxWidth(), label = { Text("enabled: true, false, or blank") }, enabled = !busy)
+                    Button(enabled = !busy && updateActivityName.isNotBlank() && isOptionalBoolean(updateActivityExported) && isOptionalBoolean(updateActivityEnabled), onClick = { val currentDraft = current; scope.launch {
+                        busy = true
+                        val edit = ManifestEdit.UpdateActivity(ActivityInfo(updateActivityName, optionalBoolean(updateActivityExported), optionalBoolean(updateActivityEnabled)))
+                        when (val result = withContext(Dispatchers.IO) { drafts.edit(currentDraft.projectId, edit) }) {
+                            is DraftEditResult.Saved -> { draft = result.draft; draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Activity update saved to draft. original.apk is unchanged." }
+                            is DraftEditResult.Rejected -> { draftValidation = result.validation.issues.joinToString("\n") { it.message }; status = "Activity update was rejected." }
+                            is DraftEditResult.Unavailable -> status = "Draft is unavailable."
+                        }; busy = false
+                    } }) { Text("Save activity update") }
                     OutlinedTextField(newPermission, { newPermission = it }, Modifier.fillMaxWidth(), label = { Text("Add uses-permission") }, enabled = !busy)
                     OutlinedTextField(removalName, { removalName = it }, Modifier.fillMaxWidth(), label = { Text("Activity or permission name to remove") }, enabled = !busy)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -243,3 +258,12 @@ private fun chooseApk(): Path? {
     dialog.isVisible = true
     return dialog.file?.let { Path.of(dialog.directory, it) }
 }
+
+private fun optionalBoolean(value: String): Boolean? = when (value.trim().lowercase()) {
+    "" -> null
+    "true" -> true
+    "false" -> false
+    else -> null
+}
+
+private fun isOptionalBoolean(value: String): Boolean = value.trim().lowercase() in setOf("", "true", "false")

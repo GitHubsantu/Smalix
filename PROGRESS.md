@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Decide and design the next v0.2 increment for activity update controls, then obtain approval before implementing it. The staged manifest editor is manually verified for its currently exposed fields/actions; no APK rewrite, rebuild, export, or signing.
+Prepare a concise v0.3 design plan for DEX browser/disassembly scope and obtain owner approval before implementation. v0.2 remains draft-only; no APK rewrite, rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -138,3 +138,5 @@ Decide and design the next v0.2 increment for activity update controls, then obt
 - 2026-11-17: Owner manually verified the staged-editor happy path: import/inspection, opening a manifest draft, saving a draft change, validation rejection for version code `0`, and confirmed draft discard. This verifies staged UI behavior only; it does not imply any APK rewrite/export/signing behavior.
 - 2026-11-17: Added staged min/target SDK fields plus confirmation-gated activity and permission removal controls. All operations call the draft use case only and state that `original.apk` is unchanged. Owner reports testing this UI control slice successfully.
 - Test log (2026-11-17): `./gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 53s** (`19 actionable tasks: 1 executed, 18 up-to-date`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation. This verifies compilation; owner manually verified the exposed UI controls.
+- 2026-11-17: Added activity update controls for staged `exported`/`enabled` values (true, false, or absent). Owner manually verified this control. Changes are persisted only to the staged draft, never `original.apk`.
+- Test log (2026-11-17): `./gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 56s** (`19 actionable tasks: 12 executed, 7 up-to-date`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation. This verifies compilation; owner manually verified the activity-update UI.
