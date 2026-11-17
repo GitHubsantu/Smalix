@@ -1,0 +1,27 @@
+.gradle/
+.gradle-user-home/
+.kotlin/
+build/
+.idea/
+*.iml
+local.properties
+
+# Local application data: contains immutable imported APKs, logs, and SQLite metadata.
+/files/
+/workspace/
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets and signing material.
+*.jks
+*.p12
+*.keystore
+
+# JVM crash dumps and Windows Explorer metadata.
+*.hprof
+hs_err_pid*.log
+Thumbs.db
+
+# Owned binary APK fixtures stay local; fixture documentation remains tracked.
+test-fixtures/apks/*.apk
