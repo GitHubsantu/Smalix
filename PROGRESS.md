@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement v0.3 slice 2: bounded DEX class/package index and search in `engine-dex`, with generated malformed/limit fixtures. Do not add a third-party DEX library until it is verified.
+Implement v0.3 slice 3: a bounded in-house binary DEX header/string/class reader with generated malformed/limit fixtures. Do not add a third-party DEX library until it is verified.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -143,3 +143,5 @@ Implement v0.3 slice 2: bounded DEX class/package index and search in `engine-de
 - 2026-11-18: Added proposed `docs/V0_3_DESIGN.md`: bounded, read-only DEX index/search first; read-only Smali and hook analysis later; no DEX editing/assembly or APK rebuild. `dexlib2`/`baksmali` remain unverified candidates and were not added. No code or tests were run.
 - 2026-11-18: Owner approved v0.3 design. Implemented slice 1 only: typed DEX index/class/member/query models and `DexReader`/`DexSearch` contracts. No DEX reader, third-party dependency, UI, disassembly, edit, or rebuild code was added.
 - Test log (2026-11-18): `./gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 14s** (`8 actionable tasks: 8 executed`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed. Added invariant coverage for malformed DEX names and duplicate class descriptors.
+- 2026-11-18: Added `engine-dex:DefaultDexSearch`, a pure in-memory exact-descriptor/package-prefix search over the bounded DEX index model. It does not open, execute, or modify APK/DEX bytes. Binary DEX indexing is still pending.
+- Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m** (`9 actionable tasks: 4 executed, 5 up-to-date`). Tests cover exact descriptor and package-prefix result boundaries. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
