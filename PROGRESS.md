@@ -1,13 +1,13 @@
 # Smalix — Progress File
 
-Status: **v0.1 complete** · Platform: **Windows desktop (decided)** · Next milestone: **v0.2 Manifest Editing (design only)**
+Status: **v0.2 in progress** · Platform: **Windows desktop (decided)** · Current slice: **staged manifest drafts**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
 | Ver | Scope | Status |
 |---|---|---|
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
-| 0.2 | Manifest/activity/permission editing + validation | Design proposed |
+| 0.2 | Manifest/activity/permission editing + validation | In progress |
 | 0.3 | DEX browser, Smali disasm/edit/asm, hook-reference analyzer | Not started |
 | 0.4 | Resource explorer/editor, validation | Not started |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Await owner approval of `docs/V0_2_DESIGN.md`; then implement only the first v0.2 models/contracts/validator slice. No APK rewrite, rebuild, export, or signing.
+Implement the second v0.2 slice: atomic workspace draft store and SQLite metadata migration with tests. No APK rewrite, rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -125,3 +125,5 @@ Await owner approval of `docs/V0_2_DESIGN.md`; then implement only the first v0.
 - Test log (2026-11-17): `./gradlew.bat test --no-daemon --console=plain` with `SMALIX_CHUTURPAAN_FIXTURE` set: **BUILD SUCCESSFUL in 1m 24s** (`40 actionable tasks: 6 executed, 34 up-to-date`). The new `engine-apk` test executed; `:app:test` was up-to-date because the fixture-gated app integration test had already run successfully in the preceding dedicated command. Kotlin daemon access to a user-local temporary marker file was denied, so Gradle fell back to in-process compilation; tests passed. Gradle reported deprecated features warning; no test failures.
 - 2026-11-17: v0.1 inspection foundation closed by owner direction. It remains read-only: no APK editing, rebuilding, or signing capability is present.
 - 2026-11-17: Added proposed `docs/V0_2_DESIGN.md`. It defines typed staged manifest drafts in `work/`, metadata/path-only SQLite state, validation rules, and explicit save/discard UX. It defers binary-AXML writing and all APK rewrite/rebuild/export/signing work to v0.5. No feature code or tests were added/run in this design-only step.
+- 2026-11-17: Owner approved the v0.2 design. Implemented only slice 1: immutable manifest-draft/edit/validation models, editor/validator and storage contracts, plus the in-house editor/validator. Activity additions produce a DEX-unverified warning; invalid scalars, malformed labels, duplicate activity/permission names, and unknown removals produce validation errors. No draft is persisted yet and no APK bytes are changed.
+- Test log (2026-11-17): `./gradlew.bat :core-model:test :engine-api:test :engine-manifest:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 59s** (`13 actionable tasks: 4 executed, 9 up-to-date`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed. Gradle reported deprecated features warning; no test failures.

@@ -2,6 +2,7 @@ package com.imdevops.smalix.engine.api
 
 import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ProjectId
+import com.imdevops.smalix.core.model.ManifestDraft
 import com.imdevops.smalix.core.model.Workspace
 import java.nio.file.Path
 
@@ -30,4 +31,12 @@ interface WorkspaceStore {
 
     /** Removes only the workspace identified by [workspace]. */
     suspend fun delete(workspace: Workspace)
+}
+
+interface ManifestDraftStore {
+    suspend fun load(workspace: Workspace): ManifestDraft?
+
+    suspend fun save(workspace: Workspace, draft: ManifestDraft)
+
+    suspend fun discard(workspace: Workspace)
 }
