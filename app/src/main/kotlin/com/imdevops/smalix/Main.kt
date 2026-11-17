@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,12 +31,16 @@ import androidx.compose.ui.window.application
 import com.imdevops.smalix.core.database.SqliteProjectRepository
 import com.imdevops.smalix.core.model.InspectionResult
 import com.imdevops.smalix.core.model.InspectionSummary
+import com.imdevops.smalix.core.model.ManifestDraft
 import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ZipEntryInfo
 import com.imdevops.smalix.core.storage.FileSystemWorkspaceStore
+import com.imdevops.smalix.core.storage.FileSystemManifestDraftStore
 import com.imdevops.smalix.engine.apk.ZipApkAnalyzer
 import com.imdevops.smalix.engine.dex.ZipDexDetector
 import com.imdevops.smalix.engine.manifest.BinaryManifestParser
+import com.imdevops.smalix.engine.manifest.DefaultManifestDraftEditor
+import com.imdevops.smalix.engine.manifest.DefaultManifestDraftValidator
 import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Path
@@ -57,10 +62,13 @@ private fun SmalixScreen() {
     val inspection = remember { InspectionUseCase(ZipApkAnalyzer(), BinaryManifestParser(), ZipDexDetector()) }
     val createProject = remember { ProjectCreationUseCase(repository, workspaceStore) }
     val reopenInspection = remember { ReopenProjectInspectionUseCase(repository, workspaceStore, ProjectInspectionUseCase(repository, inspection)) }
+    val drafts = remember { ManifestDraftUseCase(repository, workspaceStore, FileSystemManifestDraftStore(workspaceStore), repository, inspection, DefaultManifestDraftEditor(), DefaultManifestDraftValidator()) }
     var projects by remember { mutableStateOf(emptyList<Project>()) }
     var selected by remember { mutableStateOf<Project?>(null) }
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
+    var draft by remember { mutableStateOf<ManifestDraft?>(null) }
+    var discardConfirmation by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     fun refresh() = scope.launch { projects = withContext(Dispatchers.IO) { repository.list() }; selected = projects.firstOrNull { it.id == selected?.id } ?: projects.firstOrNull() }
     LaunchedEffect(Unit) { projects = withContext(Dispatchers.IO) { repository.list() }; selected = projects.firstOrNull() }
@@ -85,6 +93,17 @@ private fun SmalixScreen() {
                     }
                 }; busy = false
             } }) { Text("Inspect selected") }
+            Button(enabled = !busy && selected != null, onClick = { val project = selected ?: return@Button; scope.launch {
+                busy = true; status = "Opening staged manifest draft..."
+                when (val result = withContext(Dispatchers.IO) { drafts.openOrCreate(project.id, Instant.now().plusSeconds(120)) }) {
+                    is DraftSessionResult.Ready -> { draft = result.draft; status = "Draft saved under work/. original.apk is unchanged." }
+                    DraftSessionResult.ProjectNotFound -> status = "Project no longer exists."
+                    DraftSessionResult.ProjectNotReady -> status = "Inspect successfully before editing a draft."
+                    is DraftSessionResult.WorkspaceUnavailable -> status = "Workspace unavailable: ${result.message}"
+                    is DraftSessionResult.StaleDraft -> status = "Draft unavailable: ${result.message}"
+                    is DraftSessionResult.InspectionFailed -> status = "Draft inspection failed: ${result.error}"
+                }; busy = false
+            } }) { Text("Open manifest draft") }
             Button(enabled = !busy, onClick = ::refresh) { Text("Refresh") }
         }
         Text(status)
@@ -97,10 +116,19 @@ private fun SmalixScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 selected?.let { Text("Selected: ${it.displayName}\nSHA-256: ${it.originalSha256 ?: "not analyzed"}") }
+                draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
+                if (draft != null) Button(enabled = !busy, onClick = { discardConfirmation = true }) { Text("Discard draft...") }
                 if (summary != null) SummaryPanel(summary!!) else Text("No in-memory inspection result yet.")
             }
         }
     }
+    if (discardConfirmation && draft != null) AlertDialog(
+        onDismissRequest = { discardConfirmation = false },
+        title = { Text("Discard staged draft?") },
+        text = { Text("Only work/manifest-draft.json and its metadata will be deleted. original.apk is unchanged.") },
+        confirmButton = { Button(onClick = { val id = draft!!.projectId; scope.launch { busy = true; discardConfirmation = false; when (withContext(Dispatchers.IO) { drafts.discard(id) }) { DraftDiscardResult.Discarded -> { draft = null; status = "Draft discarded. original.apk is unchanged." }; is DraftDiscardResult.Unavailable -> status = "Draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
+        dismissButton = { Button(onClick = { discardConfirmation = false }) { Text("Cancel") } },
+    )
 }
 
 @Composable
