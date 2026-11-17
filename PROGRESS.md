@@ -7,7 +7,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | Ver | Scope | Status |
 |---|---|---|
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
-| 0.2 | Manifest/activity/permission editing + validation | Not started |
+| 0.2 | Manifest/activity/permission editing + validation | Design proposed |
 | 0.3 | DEX browser, Smali disasm/edit/asm, hook-reference analyzer | Not started |
 | 0.4 | Resource explorer/editor, validation | Not started |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Design v0.2 manifest editing boundaries and validation workflow; obtain owner approval before writing any editing code.
+Await owner approval of `docs/V0_2_DESIGN.md`; then implement only the first v0.2 models/contracts/validator slice. No APK rewrite, rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -124,3 +124,4 @@ Design v0.2 manifest editing boundaries and validation workflow; obtain owner ap
 - 2026-11-17: Added a portable no-native-ABI fixture to `ZipApkAnalyzerTest`; a valid generated archive with no `lib/` entries must report an empty ABI set. No owner APK was needed or copied for this case.
 - Test log (2026-11-17): `./gradlew.bat test --no-daemon --console=plain` with `SMALIX_CHUTURPAAN_FIXTURE` set: **BUILD SUCCESSFUL in 1m 24s** (`40 actionable tasks: 6 executed, 34 up-to-date`). The new `engine-apk` test executed; `:app:test` was up-to-date because the fixture-gated app integration test had already run successfully in the preceding dedicated command. Kotlin daemon access to a user-local temporary marker file was denied, so Gradle fell back to in-process compilation; tests passed. Gradle reported deprecated features warning; no test failures.
 - 2026-11-17: v0.1 inspection foundation closed by owner direction. It remains read-only: no APK editing, rebuilding, or signing capability is present.
+- 2026-11-17: Added proposed `docs/V0_2_DESIGN.md`. It defines typed staged manifest drafts in `work/`, metadata/path-only SQLite state, validation rules, and explicit save/discard UX. It defers binary-AXML writing and all APK rewrite/rebuild/export/signing work to v0.5. No feature code or tests were added/run in this design-only step.
