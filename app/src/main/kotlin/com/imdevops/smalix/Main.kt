@@ -37,12 +37,14 @@ import com.imdevops.smalix.core.model.ManifestEdit
 import com.imdevops.smalix.core.model.ManifestLabel
 import com.imdevops.smalix.core.model.ActivityInfo
 import com.imdevops.smalix.core.model.PermissionInfo
+import com.imdevops.smalix.core.model.DexIndex
 import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ZipEntryInfo
 import com.imdevops.smalix.core.storage.FileSystemWorkspaceStore
 import com.imdevops.smalix.core.storage.FileSystemManifestDraftStore
 import com.imdevops.smalix.engine.apk.ZipApkAnalyzer
 import com.imdevops.smalix.engine.dex.ZipDexDetector
+import com.imdevops.smalix.engine.dex.BoundedDexReader
 import com.imdevops.smalix.engine.manifest.BinaryManifestParser
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftEditor
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftValidator
@@ -72,6 +74,7 @@ private fun SmalixScreen() {
     var selected by remember { mutableStateOf<Project?>(null) }
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
+    var dexIndex by remember { mutableStateOf<DexIndex?>(null) }
     var draft by remember { mutableStateOf<ManifestDraft?>(null) }
     var draftLabel by remember { mutableStateOf("") }
     var draftVersionName by remember { mutableStateOf("") }
@@ -123,6 +126,13 @@ private fun SmalixScreen() {
                     is DraftSessionResult.InspectionFailed -> status = "Draft inspection failed: ${result.error}"
                 }; busy = false
             } }) { Text("Open manifest draft") }
+            Button(enabled = !busy && summary != null, onClick = { val value = summary ?: return@Button; scope.launch {
+                busy = true; status = "Indexing validated DEX classes..."
+                when (val result = withContext(Dispatchers.IO) { BoundedDexReader().index(value.apk.archive) }) {
+                    is InspectionResult.Success -> { dexIndex = result.value; status = "Read-only DEX index loaded (${result.value.classes.size} classes)." }
+                    is InspectionResult.Failure -> status = "DEX index failed: ${result.error}"
+                }; busy = false
+            } }) { Text("Browse DEX classes") }
             Button(enabled = !busy, onClick = ::refresh) { Text("Refresh") }
         }
         Text(status)
@@ -135,6 +145,7 @@ private fun SmalixScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 selected?.let { Text("Selected: ${it.displayName}\nSHA-256: ${it.originalSha256 ?: "not analyzed"}") }
+                dexIndex?.let { InspectorSection("DEX classes", it.classes.joinToString("\n") { it.descriptor }.ifBlank { "No classes" }) }
                 draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
                 draft?.let { current ->
                     OutlinedTextField(draftLabel, { draftLabel = it }, Modifier.fillMaxWidth(), label = { Text("App label") }, enabled = !busy)

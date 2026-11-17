@@ -7,8 +7,8 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | Ver | Scope | Status |
 |---|---|---|
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
-| 0.2 | Manifest/activity/permission editing + validation | In progress |
-| 0.3 | DEX browser, Smali disasm/edit/asm, hook-reference analyzer | Not started |
+| 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
+| 0.3 | DEX browser, Smali disasm/edit/asm, hook-reference analyzer | In progress |
 | 0.4 | Resource explorer/editor, validation | Not started |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
 | 1.0 | Integration + stabilization | Not started |
@@ -147,3 +147,4 @@ Implement v0.3 slice 4: compose a read-only DEX class browser using the bounded 
 - Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m** (`9 actionable tasks: 4 executed, 5 up-to-date`). Tests cover exact descriptor and package-prefix result boundaries. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
 - 2026-11-18: Added `engine-dex:BoundedDexReader`. It opens only canonical DEX ZIP entries, caps entry bytes/class count, parses the DEX header/string/type/class tables to produce class descriptors, and returns typed malformed failures. It never executes DEX or writes APK/DEX bytes.
 - Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Generated tests cover one-class descriptor indexing, malformed-header rejection, and class-limit rejection. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
+- 2026-11-18: Added the read-only desktop DEX browser action. It indexes only the already validated archive and displays class descriptors; it has no DEX/Smali write action. Owner manually verified the browser action. Milestones updated: v0.2 complete (staged drafts only), v0.3 in progress.
