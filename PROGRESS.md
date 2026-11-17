@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement v0.3 slice 3: a bounded in-house binary DEX header/string/class reader with generated malformed/limit fixtures. Do not add a third-party DEX library until it is verified.
+Implement v0.3 slice 4: compose a read-only DEX class browser using the bounded reader/search, then manually verify it with an owned APK. No DEX/Smali write, assembly, APK rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -145,3 +145,5 @@ Implement v0.3 slice 3: a bounded in-house binary DEX header/string/class reader
 - Test log (2026-11-18): `./gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 14s** (`8 actionable tasks: 8 executed`). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed. Added invariant coverage for malformed DEX names and duplicate class descriptors.
 - 2026-11-18: Added `engine-dex:DefaultDexSearch`, a pure in-memory exact-descriptor/package-prefix search over the bounded DEX index model. It does not open, execute, or modify APK/DEX bytes. Binary DEX indexing is still pending.
 - Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m** (`9 actionable tasks: 4 executed, 5 up-to-date`). Tests cover exact descriptor and package-prefix result boundaries. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
+- 2026-11-18: Added `engine-dex:BoundedDexReader`. It opens only canonical DEX ZIP entries, caps entry bytes/class count, parses the DEX header/string/type/class tables to produce class descriptors, and returns typed malformed failures. It never executes DEX or writes APK/DEX bytes.
+- Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Generated tests cover one-class descriptor indexing, malformed-header rejection, and class-limit rejection. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
