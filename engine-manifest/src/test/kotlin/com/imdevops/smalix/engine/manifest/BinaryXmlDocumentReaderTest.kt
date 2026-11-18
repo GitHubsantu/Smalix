@@ -33,12 +33,45 @@ class BinaryXmlDocumentReaderTest {
 
     @Test fun `builds an immutable typed element tree`() {
         val start = startTag(nameIndex = 0, attributes = listOf(BinaryXmlAttribute(-1, 1, -1, 0x10, 26)))
-        val bytes = document(start, endTag(nameIndex = 0))
+        val bytes = document(stringPoolUtf8("manifest", "package"), start, endTag(nameIndex = 0))
 
         val result = BinaryXmlDocumentReader().read(bytes)
 
         val document = assertInstanceOf(InspectionResult.Success::class.java, result).value as BinaryXmlDocument
+        assertEquals(listOf("manifest", "package"), document.strings)
         assertEquals(listOf(BinaryXmlElement(-1, 0, listOf(BinaryXmlAttribute(-1, 1, -1, 0x10, 26)), emptyList())), document.rootElements)
+    }
+
+    @Test fun `resolves long UTF-16 string pool values`() {
+        val value = "x".repeat(32_768)
+
+        val result = BinaryXmlDocumentReader().read(document(stringPoolUtf16(value)))
+
+        val document = assertInstanceOf(InspectionResult.Success::class.java, result).value as BinaryXmlDocument
+        assertEquals(listOf(value), document.strings)
+    }
+
+    @Test fun `rejects an incomplete string offset table`() {
+        val pool = ByteBuffer.allocate(28).order(ByteOrder.LITTLE_ENDIAN).apply {
+            putShort(0x0001).putShort(28).putInt(28).putInt(1).putInt(0).putInt(0x100).putInt(28).putInt(0)
+        }.array()
+
+        val result = BinaryXmlDocumentReader().read(document(pool))
+
+        val failure = assertInstanceOf(InspectionResult.Failure::class.java, result)
+        assertInstanceOf(AnalysisFailure.MalformedApk::class.java, failure.error)
+    }
+
+    @Test fun `rejects unterminated UTF-8 string pool value`() {
+        val pool = ByteBuffer.allocate(35).order(ByteOrder.LITTLE_ENDIAN).apply {
+            putShort(0x0001).putShort(28).putInt(35).putInt(1).putInt(0).putInt(0x100).putInt(32).putInt(0)
+            putInt(0).put(1).put(1).put('x'.code.toByte())
+        }.array()
+
+        val result = BinaryXmlDocumentReader().read(document(pool))
+
+        val failure = assertInstanceOf(InspectionResult.Failure::class.java, result)
+        assertInstanceOf(AnalysisFailure.MalformedApk::class.java, failure.error)
     }
 
     @Test fun `enforces document byte limit`() {
@@ -76,4 +109,27 @@ class BinaryXmlDocumentReaderTest {
     private fun endTag(nameIndex: Int): ByteArray = ByteBuffer.allocate(24).order(ByteOrder.LITTLE_ENDIAN).apply {
         putShort(0x0103).putShort(16).putInt(24).putInt(0).putInt(-1).putInt(-1).putInt(nameIndex)
     }.array()
+
+    private fun stringPoolUtf8(vararg values: String): ByteArray {
+        val strings = values.map { value -> byteArrayOf(value.length.toByte(), value.toByteArray().size.toByte()) + value.toByteArray() + byteArrayOf(0) }
+        return stringPool(values.size, 0x100, strings)
+    }
+
+    private fun stringPoolUtf16(value: String): ByteArray {
+        val encoded = value.toByteArray(Charsets.UTF_16LE)
+        val length = value.length
+        val prefix = if (length < 0x8000) ByteBuffer.allocate(2).order(ByteOrder.LITTLE_ENDIAN).putShort(length.toShort()).array() else
+            ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putShort((0x8000 or (length ushr 16)).toShort()).putShort(length.toShort()).array()
+        return stringPool(1, 0, listOf(prefix + encoded + byteArrayOf(0, 0)))
+    }
+
+    private fun stringPool(count: Int, flags: Int, strings: List<ByteArray>): ByteArray {
+        val offsets = strings.runningFold(0) { offset, value -> offset + value.size }.dropLast(1)
+        val size = 28 + count * 4 + strings.sumOf { it.size }
+        return ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN).apply {
+            putShort(0x0001).putShort(28).putInt(size).putInt(count).putInt(0).putInt(flags).putInt(28 + count * 4).putInt(0)
+            offsets.forEach(::putInt)
+            strings.forEach(::put)
+        }.array()
+    }
 }

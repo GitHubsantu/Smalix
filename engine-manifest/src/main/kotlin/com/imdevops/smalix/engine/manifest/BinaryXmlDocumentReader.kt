@@ -19,6 +19,7 @@ class BinaryXmlDocumentReader(private val maxBytes: Int = DEFAULT_MAX_BYTES) {
 
             var offset = ROOT_HEADER_SIZE
             val chunks = mutableListOf<BinaryXmlChunk>()
+            var strings: List<String> = emptyList()
             val roots = mutableListOf<ElementBuilder>()
             val stack = ArrayDeque<ElementBuilder>()
             while (offset < bytes.size) {
@@ -30,6 +31,7 @@ class BinaryXmlDocumentReader(private val maxBytes: Int = DEFAULT_MAX_BYTES) {
                 require(size <= bytes.size - offset) { "Binary XML chunk exceeds document bounds." }
                 chunks += BinaryXmlChunk(offset, type, headerSize, size)
                 when (type) {
+                    STRING_POOL -> strings = readStringPool(reader, offset, headerSize, size)
                     START_TAG -> readStartTag(reader, offset, headerSize, size).also { element ->
                         if (stack.isEmpty()) roots += element else stack.last().children += element
                         stack += element
@@ -44,7 +46,7 @@ class BinaryXmlDocumentReader(private val maxBytes: Int = DEFAULT_MAX_BYTES) {
             }
             require(offset == bytes.size) { "Binary XML chunk traversal did not end at document boundary." }
             require(stack.isEmpty()) { "Unclosed binary XML element." }
-            InspectionResult.Success(BinaryXmlDocument(bytes, chunks, roots.map { it.freeze() }))
+            InspectionResult.Success(BinaryXmlDocument(bytes, chunks, strings, roots.map { it.freeze() }))
         } catch (error: IllegalArgumentException) {
             InspectionResult.Failure(AnalysisFailure.MalformedApk(error.message ?: "Malformed binary XML."))
         }
@@ -79,6 +81,55 @@ class BinaryXmlDocumentReader(private val maxBytes: Int = DEFAULT_MAX_BYTES) {
         return ElementBuilder(namespaceIndex, nameIndex, attributes)
     }
 
+    private fun readStringPool(reader: Reader, offset: Int, headerSize: Int, size: Int): List<String> {
+        require(headerSize >= 28) { "Invalid binary XML string pool." }
+        val count = reader.i32(offset + 8)
+        val styleCount = reader.i32(offset + 12)
+        val flags = reader.i32(offset + 16)
+        val dataStart = reader.i32(offset + 20)
+        val stylesStart = reader.i32(offset + 24)
+        require(count in 0..200_000 && dataStart in headerSize..size) { "Invalid binary XML string pool bounds." }
+        require(styleCount >= 0) { "Invalid binary XML style count." }
+        val offsetsEnd = offset + headerSize + count * Int.SIZE_BYTES
+        val stringsEndOffset = if (styleCount == 0) size else stylesStart
+        require(offsetsEnd <= offset + dataStart && stringsEndOffset in dataStart..size) {
+            "Invalid binary XML string pool offsets."
+        }
+        val stringsEnd = offset + stringsEndOffset
+        val utf8 = flags and 0x100 != 0
+        return List(count) { index ->
+            val at = offset + dataStart + reader.i32(offset + headerSize + index * 4)
+            require(at in offset + dataStart until stringsEnd) { "Invalid binary XML string offset." }
+            if (utf8) readUtf8(reader, at, stringsEnd) else readUtf16(reader, at, stringsEnd)
+        }
+    }
+
+    private fun readUtf8(reader: Reader, start: Int, end: Int): String {
+        fun byte(at: Int): Int {
+            require(at in start until end) { "Truncated UTF-8 string pool value." }
+            return reader.u8(at)
+        }
+        fun length(at: Int): Pair<Int, Int> {
+            val first = byte(at)
+            return if (first and 0x80 == 0) first to 1 else ((first and 0x7f) shl 8 or byte(at + 1)) to 2
+        }
+        val first = length(start); val second = length(start + first.second); val text = start + first.second + second.second
+        require(second.first <= end - text - 1 && byte(text + second.first) == 0) { "Invalid UTF-8 string pool value." }
+        return String(ByteArray(second.first) { byte(text + it).toByte() }, Charsets.UTF_8)
+    }
+
+    private fun readUtf16(reader: Reader, start: Int, end: Int): String {
+        fun unit(at: Int): Int {
+            require(at >= start && at <= end - 2) { "Truncated UTF-16 string pool value." }
+            return reader.u16(at)
+        }
+        val first = unit(start)
+        val (length, lengthBytes) = if (first and 0x8000 == 0) first to 2 else ((first and 0x7fff) shl 16 or unit(start + 2)) to 4
+        val text = start + lengthBytes
+        require(length <= (end - text - 2) / 2 && unit(text + length * 2) == 0) { "Invalid UTF-16 string pool value." }
+        return String(ByteArray(length * 2) { reader.u8(text + it).toByte() }, Charsets.UTF_16LE)
+    }
+
     private fun readEndTag(reader: Reader, offset: Int, headerSize: Int, size: Int): Pair<Int, Int> {
         require(headerSize >= 16 && size >= 24) { "Invalid binary XML end tag." }
         return reader.i32(offset + 16) to reader.i32(offset + 20)
@@ -97,6 +148,7 @@ class BinaryXmlDocumentReader(private val maxBytes: Int = DEFAULT_MAX_BYTES) {
         private const val CHUNK_HEADER_SIZE = 8
         private const val START_TAG = 0x0102
         private const val END_TAG = 0x0103
+        private const val STRING_POOL = 0x0001
     }
 }
 
@@ -104,9 +156,10 @@ data class BinaryXmlChunk(val offset: Int, val type: Int, val headerSize: Int, v
     init { require(offset >= 8 && headerSize >= 8 && size >= headerSize) }
 }
 
-class BinaryXmlDocument internal constructor(bytes: ByteArray, chunks: List<BinaryXmlChunk>, roots: List<BinaryXmlElement>) {
+class BinaryXmlDocument internal constructor(bytes: ByteArray, chunks: List<BinaryXmlChunk>, strings: List<String>, roots: List<BinaryXmlElement>) {
     private val source = bytes.copyOf()
     val chunks: List<BinaryXmlChunk> = chunks.toList()
+    val strings: List<String> = strings.toList()
     val rootElements: List<BinaryXmlElement> = roots.toList()
 
     /** Returns a defensive copy suitable for a later in-memory applier. */
