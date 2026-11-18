@@ -384,11 +384,11 @@ private fun methodDraftText(method: DexMethod): String {
     if (method.accessFlags and (ACC_ABSTRACT or ACC_NATIVE) != 0) return "$declaration\n.end method"
     val returnType = method.descriptor.substringAfter(')')
     val body = when (returnType) {
-        "V" -> "    .registers 0\n    return-void"
-        "J", "D" -> "    .registers 2\n    const-wide/16 v0, 0x0\n    return-wide v0"
+        "V" -> "    .locals 0\n    return-void"
+        "J", "D" -> "    .locals 2\n    const-wide/16 v0, 0x0\n    return-wide v0"
         else -> if (returnType.startsWith("L") || returnType.startsWith("[")) {
-            "    .registers 1\n    const/4 v0, 0x0\n    return-object v0"
-        } else "    .registers 1\n    const/4 v0, 0x0\n    return v0"
+            "    .locals 1\n    const/4 v0, 0x0\n    return-object v0"
+        } else "    .locals 1\n    const/4 v0, 0x0\n    return v0"
     }
     return "$declaration\n$body\n.end method"
 }

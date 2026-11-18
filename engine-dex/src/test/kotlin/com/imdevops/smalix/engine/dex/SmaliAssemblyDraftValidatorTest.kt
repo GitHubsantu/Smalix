@@ -12,6 +12,11 @@ class SmaliAssemblyDraftValidatorTest {
         assertTrue(SmaliAssemblyDraftValidator().validate(draft(".method public static run()V\n    .registers 0\n    return-void\n.end method")).isValid)
     }
 
+    @Test fun `assembles a parameter method with locals instead of total registers`() {
+        val text = ".method public static run(Landroid/app/Activity;)V\n    .locals 0\n    return-void\n.end method"
+        assertTrue(SmaliAssemblyDraftValidator().validate(draft(text)).isValid)
+    }
+
     @Test fun `returns validation error for invalid staged method`() {
         assertFalse(SmaliAssemblyDraftValidator().validate(draft(".method public static run()V\n.end method")).isValid)
     }

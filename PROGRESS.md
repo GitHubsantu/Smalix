@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.3 in progress** · Platform: **Windows desktop (decided)** · Current slice: **read-only DEX exploration**
+Status: **v0.3 complete** · Platform: **Windows desktop (decided)** · Next milestone: **v0.4 design**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -8,7 +8,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 |---|---|---|
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
-| 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Verification pending |
+| 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Complete (staged/read-only; no source DEX/APK replacement) |
 | 0.4 | Resource explorer/editor, validation | Not started |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
 | 1.0 | Integration + stabilization | Not started |
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner manually verifies staged Smali assembly validation: a valid method draft saves, an invalid instruction is rejected, and the app remains usable after the error. If verified, mark v0.3 complete for its staged/read-only scope. Do not replace DEX/APK bytes or add rebuild/export/signing paths.
+Create a concise v0.4 resource explorer/editor design for owner approval. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -188,3 +188,5 @@ Owner manually verifies staged Smali assembly validation: a valid method draft s
 - 2026-11-18: Added `SmaliAssemblyDraftValidator` in `engine-dex` and wired it into staged-Smali saving. It first applies bounded local text checks, then wraps the method in a temporary class, assembles only a temporary DEX with verified `smali`, and deletes the store-owned temporary directory in all outcomes. A generated type-correct stub now lets an indexed method open as a valid staged draft; abstract/native methods remain bodyless. No temporary output is retained or applied to a source DEX/APK. Manual desktop validation remains pending.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 44s**. Validator tests cover valid temporary assembly and invalid-method rejection. Full regression: `... .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 37s**. Follow-up after correcting generated draft stubs: `... .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 51s**. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
 - 2026-11-18: Manual validation exposed that the metadata renderer emitted numeric method access flags (for example `.method 0x9`), which `smali` rejects. Corrected generated staged templates to emit Smali keywords (for example `public static`), preserving abstract/native bodyless declarations and type-correct return stubs. Existing drafts made with numeric flags must be discarded and reopened. Test log: `... .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 52s**. Desktop recheck remains pending.
+- 2026-11-18: Owner manually verified temporary assembly validation on `Customdialog.zenx(Landroid/app/Activity;)V`: a staged revision saved successfully with `.locals 0` and `return-void`; `original.apk` remained unchanged. Corrected future generated stubs to use `.locals`, not total `.registers`, so parameter methods validate correctly. v0.3 is complete for the staged/read-only scope; it does not replace source DEX/APK bytes or rebuild/export/sign.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 1s**. Added parameter-method `.locals` temporary-assembly coverage. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
