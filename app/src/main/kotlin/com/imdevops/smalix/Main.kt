@@ -50,7 +50,7 @@ import com.imdevops.smalix.engine.apk.ZipApkAnalyzer
 import com.imdevops.smalix.engine.dex.ZipDexDetector
 import com.imdevops.smalix.engine.dex.BoundedDexReader
 import com.imdevops.smalix.engine.dex.DefaultDexSearch
-import com.imdevops.smalix.engine.dex.BasicSmaliDraftValidator
+import com.imdevops.smalix.engine.dex.SmaliAssemblyDraftValidator
 import com.imdevops.smalix.core.model.DexClassQuery
 import com.imdevops.smalix.core.model.HookSignature
 import com.imdevops.smalix.engine.dex.DexlibHookReferenceFinder
@@ -80,7 +80,7 @@ private fun SmalixScreen() {
     val createProject = remember { ProjectCreationUseCase(repository, workspaceStore) }
     val reopenInspection = remember { ReopenProjectInspectionUseCase(repository, workspaceStore, ProjectInspectionUseCase(repository, inspection)) }
     val drafts = remember { ManifestDraftUseCase(repository, workspaceStore, FileSystemManifestDraftStore(workspaceStore), repository, inspection, DefaultManifestDraftEditor(), DefaultManifestDraftValidator()) }
-    val smaliDrafts = remember { SmaliDraftUseCase(repository, workspaceStore, FileSystemSmaliDraftStore(workspaceStore), repository, inspection, BasicSmaliDraftValidator()) }
+    val smaliDrafts = remember { SmaliDraftUseCase(repository, workspaceStore, FileSystemSmaliDraftStore(workspaceStore), repository, inspection, SmaliAssemblyDraftValidator()) }
     var projects by remember { mutableStateOf(emptyList<Project>()) }
     var selected by remember { mutableStateOf<Project?>(null) }
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
@@ -209,7 +209,7 @@ private fun SmalixScreen() {
                     }
                     smaliDraft?.let { current ->
                         InspectorSection("Staged Smali draft", "${current.dexEntryName}: ${current.classDescriptor}->${current.methodName}${current.methodDescriptor}\nRevision ${current.revision}. Text-only staged data; original.apk is unchanged.")
-                        OutlinedTextField(smaliDraftText, { smaliDraftText = it }, Modifier.fillMaxWidth().height(220.dp), label = { Text("Staged Smali text (not assembled)") }, enabled = !busy)
+                        OutlinedTextField(smaliDraftText, { smaliDraftText = it }, Modifier.fillMaxWidth().height(220.dp), label = { Text("Staged Smali text (validated into temporary output only)") }, enabled = !busy)
                         Button(enabled = !busy, onClick = { scope.launch {
                             busy = true; status = "Saving staged Smali text..."
                             when (val result = withContext(Dispatchers.IO) { smaliDrafts.saveText(current.projectId, current.id, smaliDraftText, Instant.now().plusSeconds(120)) }) {
@@ -379,8 +379,22 @@ private fun optionalBoolean(value: String): Boolean? = when (value.trim().lowerc
 
 private fun isOptionalBoolean(value: String): Boolean = value.trim().lowercase() in setOf("", "true", "false")
 
-private fun methodDraftText(method: DexMethod): String =
-    ".method 0x${method.accessFlags.toString(16)} ${method.name}${method.descriptor}\n    # Read-only indexed code offset: ${method.codeOffset ?: "none"}\n.end method"
+private fun methodDraftText(method: DexMethod): String {
+    val declaration = ".method 0x${method.accessFlags.toString(16)} ${method.name}${method.descriptor}"
+    if (method.accessFlags and (ACC_ABSTRACT or ACC_NATIVE) != 0) return "$declaration\n.end method"
+    val returnType = method.descriptor.substringAfter(')')
+    val body = when (returnType) {
+        "V" -> "    .registers 0\n    return-void"
+        "J", "D" -> "    .registers 2\n    const-wide/16 v0, 0x0\n    return-wide v0"
+        else -> if (returnType.startsWith("L") || returnType.startsWith("[")) {
+            "    .registers 1\n    const/4 v0, 0x0\n    return-object v0"
+        } else "    .registers 1\n    const/4 v0, 0x0\n    return v0"
+    }
+    return "$declaration\n$body\n.end method"
+}
 
 private fun smaliDraftId(projectId: com.imdevops.smalix.core.model.ProjectId, clazz: DexClass, method: DexMethod): UUID =
     UUID.nameUUIDFromBytes("${projectId.value}|${clazz.dexEntryName}|${clazz.descriptor}|${method.name}${method.descriptor}".toByteArray())
+
+private const val ACC_NATIVE = 0x100
+private const val ACC_ABSTRACT = 0x400

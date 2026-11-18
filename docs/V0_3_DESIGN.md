@@ -59,12 +59,12 @@ Each draft binds original APK SHA-256, DEX entry, class/method descriptor, revis
 3. A clearly labelled staged-text pane permits only draft-text changes. “Save staged text” creates a new revision after local size/binding checks; it states that `original.apk` is unchanged. **Implemented; manual desktop verification pending.**
 4. “Discard staged draft” requires confirmation and removes only the matching `work/dex/<draft-id>.smali` text and its SQLite metadata. **Implemented; manual desktop verification pending.**
 
-This slice has no assemble, validate-with-smali, DEX replacement, APK rebuild, export, or signing control.
+This slice validates staged method text with `smali` by assembling only a temporary DEX that is deleted immediately. It has no DEX replacement, APK rebuild, export, or signing control.
 
 ### Staged text editing increment (proposed)
 
 - The currently selected staged method draft gets a multiline editor showing only `work/dex/<draft-id>.smali` text. It is always labelled **staged text; original.apk unchanged**.
 - “Save staged text” creates revision `n + 1` only when the loaded draft, project, workspace, metadata, and original SHA-256 still match. It replaces the workspace text atomically, then updates SQLite metadata; a failed metadata update leaves a visible inconsistency error rather than silently continuing.
-- Local validation remains bounded and non-assembler: nonblank text, no NUL, at most 256,000 characters, `.method` opening and `.end method` closing. Full syntax/assembly validation is deferred until a separately verified `smali` dependency is approved.
+- Local validation enforces nonblank text, no NUL, 256,000-character cap, and `.method`/`.end method` shape, then uses verified `smali` only to compile a temporary wrapper class/Dex output and delete it. It does not retain or apply that output.
 - Discard remains confirmation-gated. No edit writes DEX/APK bytes, invokes a process, exports, rebuilds, aligns, or signs.
 - Tests: save/reopen revision, stale SHA and metadata mismatch rejection, validation rejection with old text preserved, atomic-write failure handling, and unchanged original bytes/SHA.

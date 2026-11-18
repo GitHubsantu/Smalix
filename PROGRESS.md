@@ -8,7 +8,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 |---|---|---|
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
-| 0.3 | DEX browser, Smali disasm/edit/asm, hook-reference analyzer | In progress |
+| 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Verification pending |
 | 0.4 | Resource explorer/editor, validation | Not started |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
 | 1.0 | Integration + stabilization | Not started |
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Await owner approval for an assembler-validation design: compile staged method text only to a bounded temporary output, report diagnostics, and delete the output. Do not replace DEX/APK bytes or add rebuild/export/signing paths.
+Owner manually verifies staged Smali assembly validation: a valid method draft saves, an invalid instruction is rejected, and the app remains usable after the error. If verified, mark v0.3 complete for its staged/read-only scope. Do not replace DEX/APK bytes or add rebuild/export/signing paths.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -185,3 +185,5 @@ Await owner approval for an assembler-validation design: compile staged method t
 - 2026-11-18: Owner manually verified staged-Smali text editing: valid save/reopen, invalid-text rejection preserving prior text, and discard. This verifies staged workspace text only; no assembler, DEX/APK write, rebuild, export, or signing behavior is implied.
 - 2026-11-18: Verified `org.smali:smali:2.5.2` on the **test classpath only**. Its resolved POM declares BSD 3-Clause; it resolves with ANTLR, dexlib2/util, ANTLR runtime/stringtemplate, JCommander, and Guava Android transitive dependencies (notices must be retained before distribution). JDK 17 smoke test successfully loaded `org.jf.smali.Smali`. This does not authorize or implement assembly, DEX/APK replacement, rebuild, export, or signing; `baksmali` remains unverified.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test --tests '*SmaliLibrarySmokeTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 46s**. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
+- 2026-11-18: Added `SmaliAssemblyDraftValidator` in `engine-dex` and wired it into staged-Smali saving. It first applies bounded local text checks, then wraps the method in a temporary class, assembles only a temporary DEX with verified `smali`, and deletes the store-owned temporary directory in all outcomes. A generated type-correct stub now lets an indexed method open as a valid staged draft; abstract/native methods remain bodyless. No temporary output is retained or applied to a source DEX/APK. Manual desktop validation remains pending.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 44s**. Validator tests cover valid temporary assembly and invalid-method rejection. Full regression: `... .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 37s**. Follow-up after correcting generated draft stubs: `... .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 51s**. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
