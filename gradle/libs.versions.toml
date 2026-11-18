@@ -6,12 +6,14 @@ coroutines = "1.9.0"
 koin = "4.0.0"
 sqliteJdbc = "3.47.2.0"
 dexlib2 = "2.5.2"
+smali = "2.5.2"
 
 [libraries]
 coroutines-core = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-core", version.ref = "coroutines" }
 koin-core = { module = "io.insert-koin:koin-core", version.ref = "koin" }
 sqlite-jdbc = { module = "org.xerial:sqlite-jdbc", version.ref = "sqliteJdbc" }
 dexlib2 = { module = "org.smali:dexlib2", version.ref = "dexlib2" }
+smali = { module = "org.smali:smali", version.ref = "smali" }
 
 [plugins]
 kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

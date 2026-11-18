@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Await owner approval to perform a separate `org.smali:smali` artifact-license and JDK 17 smoke verification. Do not add the library, assemble drafts, or add DEX/APK write paths unless that verification is approved and succeeds.
+Await owner approval for an assembler-validation design: compile staged method text only to a bounded temporary output, report diagnostics, and delete the output. Do not replace DEX/APK bytes or add rebuild/export/signing paths.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -183,3 +183,5 @@ Await owner approval to perform a separate `org.smali:smali` artifact-license an
 - 2026-11-18: Implemented the approved staged-Smali text editing slice. The desktop UI shows only staged method text and explicitly states that `original.apk` is unchanged. Save re-inspects SHA-256, requires matching workspace/SQLite state, increments the revision, and rejects invalid local text without replacing the old draft. The local validator is bounded only (nonblank, no NUL, 256,000-character cap, `.method`/`.end method` shape); it does not assemble or fully parse Smali. Desktop interaction has not yet been manually verified.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 18s**. Added use-case coverage for revisioned save and validation rejection preserving prior staged text. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
 - 2026-11-18: Owner manually verified staged-Smali text editing: valid save/reopen, invalid-text rejection preserving prior text, and discard. This verifies staged workspace text only; no assembler, DEX/APK write, rebuild, export, or signing behavior is implied.
+- 2026-11-18: Verified `org.smali:smali:2.5.2` on the **test classpath only**. Its resolved POM declares BSD 3-Clause; it resolves with ANTLR, dexlib2/util, ANTLR runtime/stringtemplate, JCommander, and Guava Android transitive dependencies (notices must be retained before distribution). JDK 17 smoke test successfully loaded `org.jf.smali.Smali`. This does not authorize or implement assembly, DEX/APK replacement, rebuild, export, or signing; `baksmali` remains unverified.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test --tests '*SmaliLibrarySmokeTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 46s**. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.

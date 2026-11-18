@@ -5,4 +5,5 @@ dependencies {
     implementation(project(":core-common"))
     implementation(libs.coroutines.core)
     implementation(libs.dexlib2)
+    testImplementation(libs.smali)
 }

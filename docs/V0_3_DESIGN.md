@@ -27,7 +27,7 @@ v0.3 reads only the DEX entries already accepted by the ZIP analyzer. `original.
 
 ## Library decision
 
-Candidate: `org.smali:dexlib2` (and `baksmali` only for read-only text). License/JDK 17 compatibility are **unverified**; do not add either dependency until an artifact-license inspection and a JVM smoke test pass. If unsuitable, implement a bounded in-house DEX reader for the first increment.
+`org.smali:dexlib2:2.5.2` is verified for the current read-only hook scanner (BSD 3-Clause; JDK 17 smoke tested). `org.smali:smali:2.5.2` is verified only on the **test classpath**: its resolved POM declares BSD 3-Clause and its JDK 17 class-load smoke test passed. Its transitive set includes ANTLR 3.5.2, dexlib2, smali util, ANTLR runtime/stringtemplate, JCommander, and Guava Android; retain their notices before any distribution. No production assembler use or DEX/APK write path is approved yet. `baksmali` remains unverified.
 
 ## Tests and fixtures
 
