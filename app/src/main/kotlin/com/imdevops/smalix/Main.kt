@@ -380,7 +380,7 @@ private fun optionalBoolean(value: String): Boolean? = when (value.trim().lowerc
 private fun isOptionalBoolean(value: String): Boolean = value.trim().lowercase() in setOf("", "true", "false")
 
 private fun methodDraftText(method: DexMethod): String {
-    val declaration = ".method 0x${method.accessFlags.toString(16)} ${method.name}${method.descriptor}"
+    val declaration = ".method ${smaliAccessFlags(method.accessFlags)}${method.name}${method.descriptor}"
     if (method.accessFlags and (ACC_ABSTRACT or ACC_NATIVE) != 0) return "$declaration\n.end method"
     val returnType = method.descriptor.substringAfter(')')
     val body = when (returnType) {
@@ -398,3 +398,20 @@ private fun smaliDraftId(projectId: com.imdevops.smalix.core.model.ProjectId, cl
 
 private const val ACC_NATIVE = 0x100
 private const val ACC_ABSTRACT = 0x400
+
+private fun smaliAccessFlags(flags: Int): String = buildList {
+    if (flags and 0x1 != 0) add("public")
+    if (flags and 0x2 != 0) add("private")
+    if (flags and 0x4 != 0) add("protected")
+    if (flags and 0x8 != 0) add("static")
+    if (flags and 0x10 != 0) add("final")
+    if (flags and 0x20 != 0) add("synchronized")
+    if (flags and 0x40 != 0) add("bridge")
+    if (flags and 0x80 != 0) add("varargs")
+    if (flags and ACC_NATIVE != 0) add("native")
+    if (flags and ACC_ABSTRACT != 0) add("abstract")
+    if (flags and 0x800 != 0) add("strictfp")
+    if (flags and 0x1000 != 0) add("synthetic")
+    if (flags and 0x10000 != 0) add("constructor")
+    if (flags and 0x20000 != 0) add("declared-synchronized")
+}.joinToString(" ").let { if (it.isBlank()) "" else "$it " }
