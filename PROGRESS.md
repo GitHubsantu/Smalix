@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.2 in progress** · Platform: **Windows desktop (decided)** · Current slice: **staged manifest drafts**
+Status: **v0.3 in progress** · Platform: **Windows desktop (decided)** · Current slice: **read-only DEX exploration**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
