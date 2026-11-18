@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **approve signing boundary before implementation**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **approve expanded v1/v2/v3 signing boundary**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner approval: implement the bounded v2/PKCS12 signing slice in `docs/V0_5_SIGNING_DESIGN.md`; no export path or UI controls.
+Owner approval: implement the v1/v2/v3 signing slice in `docs/V0_5_SIGNING_DESIGN.md`, including explicit local PKCS#8/X.509 test-profile support; no export path or UI controls.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -275,3 +275,4 @@ Owner approval: implement the bounded v2/PKCS12 signing slice in `docs/V0_5_SIGN
 - Test log (2026-11-18): after changing the final move to Java's non-overwriting move contract, with the same `SMALIX_ZIPALIGN`, `.\gradlew.bat :engine-apk:test --tests '*WindowsZipAlignerTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 19s** (`9 actionable tasks: 4 executed, 5 up-to-date`). `WindowsZipAlignerTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**, including real-tool alignment and original-SHA preservation. Kotlin daemon access was denied for user-local marker files and Gradle fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added proposed `docs/V0_5_SIGNING_DESIGN.md`. It limits the first signing implementation to the already-tested `apksig` PKCS12/v2/min-SDK-24 path, accepts only a reinspected build-local `aligned.apk`, writes only a distinct build-local `signed.apk`, verifies it, and requires final inspection. Persisted profile metadata has no secrets; passwords remain in memory as cleared `CharArray` values. V1, v3/v3.1, source stamps, key rotation, other keystores, certificate-store signing, profile persistence, UI, and export remain outside this slice.
 - Test log (2026-11-18): no tests run (documentation-only design step).
+- 2026-11-18: Owner requested selectable v1/v2/v3 signing and supplied `C:\Users\Santu\Downloads\testkey.pk8` plus `testkey.x509.pem`. Metadata-only inspection confirmed the two files exist; their contents were not read, copied, stored, logged, or committed. The signing design now proposes explicit test-only PKCS#8/X.509 support alongside PKCS12, requires at least one selected scheme (v2 SDK 24+, v3 SDK 28+), and retains v3.1/source stamps/rotation as unsupported. No signing code or tests were run in this design update.
