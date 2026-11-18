@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement confirmation-gated discard for staged resource drafts in the desktop UI, then recheck staged resource draft lifecycle. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Owner: manually recheck staged resource draft discard: cancel leaves it intact; confirm removes only its `work/resources` JSON and metadata. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -217,3 +217,5 @@ Implement confirmation-gated discard for staged resource drafts in the desktop U
 - 2026-11-18: Added the staged-resource desktop selection/save UI. It exposes only literal string/color/dimen resource entries, opens a SHA-bound workspace draft, and shows an explicit immutable `resources.arsc` message. Raw references have no edit control. Desktop interaction has not yet been manually verified.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 49s** (`19 actionable tasks: 19 up-to-date`). This verifies compilation only; Gradle reported deprecated-features warnings.
 - 2026-11-18: Owner reported the staged-resource desktop UI works. This is manual confirmation of the implemented selection/save path only; it does not imply any `resources.arsc`/APK apply behavior.
+- 2026-11-18: Added confirmation-gated staged-resource draft discard in the desktop UI. It calls the SHA-bound use case and explicitly states that only the matching workspace draft/metadata is removed; `original.apk` and `resources.arsc` remain unchanged. Manual discard interaction is pending.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 21s** (`19 actionable tasks: 1 executed, 18 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.

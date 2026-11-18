@@ -99,6 +99,7 @@ private fun SmalixScreen() {
     var resourceSearch by remember { mutableStateOf("") }
     var resourceDraft by remember { mutableStateOf<ResourceDraft?>(null) }
     var resourceDraftValue by remember { mutableStateOf("") }
+    var resourceDiscardConfirmation by remember { mutableStateOf(false) }
     var dexSearch by remember { mutableStateOf("") }
     var selectedDexClass by remember { mutableStateOf<DexClass?>(null) }
     var selectedDexMethod by remember { mutableStateOf<DexMethod?>(null) }
@@ -251,6 +252,7 @@ private fun SmalixScreen() {
                     resourceDraft?.let { current ->
                         OutlinedTextField(resourceDraftValue, { resourceDraftValue = it }, Modifier.fillMaxWidth(), label = { Text("Staged ${current.type.wireName} value") }, enabled = !busy)
                         Button(enabled = !busy, onClick = { scope.launch { busy = true; when (val result = withContext(Dispatchers.IO) { resourceDrafts.saveValue(current.projectId, current.id, resourceDraftValue, Instant.now().plusSeconds(120)) }) { is ResourceDraftSaveResult.Saved -> { resourceDraft = result.draft; resourceDraftValue = result.draft.proposedValue; status = "Staged resource value saved. resources.arsc is unchanged." }; is ResourceDraftSaveResult.Rejected -> status = "Resource value was not saved: ${result.validation.messages.joinToString()}"; else -> status = "Resource draft unavailable." }; busy = false } }) { Text("Save staged resource value") }
+                        Button(enabled = !busy, onClick = { resourceDiscardConfirmation = true }) { Text("Discard staged resource draft...") }
                     }
                 }
                 summary?.let { currentSummary ->
@@ -335,6 +337,13 @@ private fun SmalixScreen() {
         text = { Text("Only the matching work/dex text draft and its metadata will be deleted. original.apk is unchanged.") },
         confirmButton = { Button(onClick = { val current = smaliDraft!!; scope.launch { busy = true; smaliDiscardConfirmation = false; when (withContext(Dispatchers.IO) { smaliDrafts.discard(current.projectId, current.id) }) { is SmaliDraftSessionResult.Ready -> { smaliDraft = null; smaliDraftText = ""; status = "Staged Smali draft discarded. original.apk is unchanged." }; else -> status = "Staged Smali draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
         dismissButton = { Button(onClick = { smaliDiscardConfirmation = false }) { Text("Cancel") } },
+    )
+    if (resourceDiscardConfirmation && resourceDraft != null) AlertDialog(
+        onDismissRequest = { resourceDiscardConfirmation = false },
+        title = { Text("Discard staged resource draft?") },
+        text = { Text("Only the matching work/resources draft and metadata will be deleted. original.apk and resources.arsc are unchanged.") },
+        confirmButton = { Button(onClick = { val current = resourceDraft!!; scope.launch { busy = true; resourceDiscardConfirmation = false; when (withContext(Dispatchers.IO) { resourceDrafts.discard(current.projectId, current.id) }) { is ResourceDraftSessionResult.Ready -> { resourceDraft = null; resourceDraftValue = ""; status = "Staged resource draft discarded. resources.arsc is unchanged." }; else -> status = "Staged resource draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
+        dismissButton = { Button(onClick = { resourceDiscardConfirmation = false }) { Text("Cancel") } },
     )
     if (removalConfirmation && draft != null) AlertDialog(
         onDismissRequest = { removalConfirmation = false },
