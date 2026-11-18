@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner: review and approve `docs/V0_5_DESIGN.md` before any output, resource-table application, rebuild, export, alignment, or signing code.
+Implement isolated-copy build verification only: a store-owned temporary build copy with unchanged-original checks; no draft application, export, alignment, signing, or tool dependency.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -229,3 +229,5 @@ Owner: review and approve `docs/V0_5_DESIGN.md` before any output, resource-tabl
 - 2026-11-18: Added an explicit bounded `resources.arsc` parse deadline. It checks package/type traversal and every 1,024 type entries, returning typed `LimitExceeded` rather than continuing past the deadline. v0.4 is complete for its approved read-only/staged scope; no resource table or APK application exists.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryResourceTableReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 24s** (`11 actionable tasks: 4 executed, 7 up-to-date`). The reader suite includes the zero-deadline typed-limit test. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added proposed `docs/V0_5_DESIGN.md`. It defines isolated-copy build boundaries, validateâ†’applyâ†’alignâ†’signâ†’verifyâ†’export ordering, key/password restrictions, recovery/tests, and explicit unverified candidate tools. No dependency, feature code, build output, export, alignment, or signing action was added or run.
+- 2026-11-18: Owner approved the v0.5 design. Implemented only UI-independent build request/result and pipeline contracts; they create no output and add no signing/resource/DEX tool dependency.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 53s** (`8 actionable tasks: 2 executed, 6 up-to-date`). The first attempt exposed a missing coroutines test dependency in `engine-api`; corrected to Kotlin standard coroutine support before this successful rerun. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.

@@ -55,4 +55,10 @@ class InspectionModelsTest {
         assertEquals(0, draft.revision)
         assertEquals(null, ResourceDraft.from(ProjectId.random(), "a".repeat(64), literal.copy(value = ResourceValue.Reference("@string/other"))))
     }
+
+    @Test fun `build request binds an APK output to an inspected original hash`() {
+        val request = BuildRequest(java.util.UUID.randomUUID(), ProjectId.random(), "a".repeat(64), RelativePath.of("exports/result.apk"), java.time.Instant.EPOCH)
+        assertEquals("exports/result.apk", request.exportPath.value)
+        assertThrows(IllegalArgumentException::class.java) { request.copy(exportPath = RelativePath.of("exports/result.zip")) }
+    }
 }

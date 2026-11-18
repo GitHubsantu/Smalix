@@ -10,6 +10,8 @@ import com.imdevops.smalix.core.model.ResourceDraft
 import com.imdevops.smalix.core.model.ResourceDraftMetadata
 import com.imdevops.smalix.core.model.ResourceDraftValidation
 import com.imdevops.smalix.core.model.Workspace
+import com.imdevops.smalix.core.model.BuildRequest
+import com.imdevops.smalix.core.model.BuildResult
 import java.nio.file.Path
 
 interface ProjectRepository {
@@ -87,3 +89,6 @@ interface ResourceDraftRepository {
 
 /** Performs lexical validation only; applying a draft remains outside v0.4. */
 interface ResourceDraftValidator { fun validate(draft: ResourceDraft): ResourceDraftValidation }
+
+/** Future isolated build contract; implementations must never mutate Workspace.originalApk. */
+interface BuildPipeline { suspend fun build(workspace: Workspace, request: BuildRequest): BuildResult }
