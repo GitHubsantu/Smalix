@@ -10,7 +10,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
 | 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Complete (staged/read-only; no source DEX/APK replacement) |
 | 0.4 | Resource explorer/editor, validation | Complete (read-only explorer + SHA-bound staged literal drafts only; no resource-table/APK apply) |
-| 0.5 | Rebuild, align, sign, verify, export | Not started |
+| 0.5 | Rebuild, align, sign, verify, export | In progress (isolated build preflight only; no mutation/output/signing) |
 | 1.0 | Integration + stabilization | Not started |
 
 ## Platform decision
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Add automated preflight coverage, then design/verify the first draft-application toolchain before any APK mutation, export, alignment, or signing.
+Design and verify the first draft-application toolchain before any APK mutation, export, alignment, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -235,3 +235,5 @@ Add automated preflight coverage, then design/verify the first draft-application
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-storage:test --tests '*FileSystemBuildWorkspaceStoreTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 27s** (`9 actionable tasks: 7 executed, 2 up-to-date`). Tests verify byte-identical isolated input and unchanged original bytes plus build-ID reuse rejection. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added `BuildPreflightUseCase` and `BuildWorkspaceStore` contract. Preflight requires an analyzed project/request SHA match, re-inspects immutable original bytes, and only then creates the isolated input copy. It applies no drafts and produces no export/signature. The initial compile attempt failed due to a Kotlin override default-parameter rule; corrected before the successful rerun.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 25s** (`19 actionable tasks: 3 executed, 16 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added automated `BuildPreflightUseCase` coverage. It proves a matching analyzed/request/re-inspected SHA creates one isolated build input, while a stale request SHA is rejected before another copy is made. No draft application, APK mutation, export, alignment, or signing was added.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*BuildPreflightUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 11s** (`26 actionable tasks: 3 executed, 23 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
