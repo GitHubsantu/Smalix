@@ -28,7 +28,7 @@ Any change after alignment requires a new alignment and signature. No staged dra
 | Need | Candidate | License/JDK/Windows status |
 |---|---|---|
 | APK signatures | `com.android.tools.build:apksig:8.7.3` | Apache-2.0 POM and packaged `LICENSE` inspected. JDK 17/Windows tests verify an owner APK, reject an unsigned temporary APK without changing it, and sign/verify a temporary v2-only (min SDK 24) APK using a runtime-generated test key. Production profiles, user keys, and v1/v3 coverage remain unverified. |
-| ZIP alignment | Android `zipalign.exe` | Unverified; verify Windows binary provenance, notices, invocation, and output determinism. |
+| ZIP alignment | Android SDK Build-Tools 35.0.0 `zipalign.exe` | Local Windows behavior is verified: an intentionally unaligned stored ZIP failed check, a distinct aligned output passed check, and input SHA-256 stayed unchanged. `package.xml` identifies Build-Tools 35 but only references a generic SDK license ID; full license terms and output determinism remain unverified. |
 | Manifest/resources | Apktool + bundled `aapt2.exe`, or in-house writers | Unverified; choose only after license/provenance/JDK/Windows tests. |
 | DEX rebuild | verified `smali` temporary assembly plus a bounded DEX replacement pipeline | `smali` was verified only for temporary JDK 17 validation, not production APK rebuilding. |
 
