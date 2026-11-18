@@ -8,16 +8,19 @@ import com.imdevops.smalix.core.model.ManifestDraftMetadata
 import com.imdevops.smalix.core.model.ManifestDraftValidationStatus
 import com.imdevops.smalix.core.model.SmaliDraftMetadata
 import com.imdevops.smalix.core.model.SmaliDraftStatus
+import com.imdevops.smalix.core.model.ResourceDraftMetadata
+import com.imdevops.smalix.core.model.ResourceDraftStatus
 import com.imdevops.smalix.engine.api.ProjectRepository
 import com.imdevops.smalix.engine.api.ManifestDraftRepository
 import com.imdevops.smalix.engine.api.SmaliDraftRepository
+import com.imdevops.smalix.engine.api.ResourceDraftRepository
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.Instant
 import java.util.UUID
 
-class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestDraftRepository, SmaliDraftRepository {
+class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestDraftRepository, SmaliDraftRepository, ResourceDraftRepository {
     private val url = "jdbc:sqlite:${databasePath.toAbsolutePath().normalize()}"
 
     init {
@@ -159,6 +162,45 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestD
         }
     }
 
+    override suspend fun findResourceDraft(draftId: UUID): ResourceDraftMetadata? = connection().use { connection ->
+        connection.prepareStatement("SELECT * FROM resource_drafts WHERE draft_id = ?").use { statement ->
+            statement.setString(1, draftId.toString())
+            statement.executeQuery().use { results -> if (results.next()) results.resourceDraftMetadata() else null }
+        }
+    }
+
+    override suspend fun listResourceDrafts(projectId: ProjectId): List<ResourceDraftMetadata> = connection().use { connection ->
+        connection.prepareStatement("SELECT * FROM resource_drafts WHERE project_id = ? ORDER BY updated_at_ms DESC, draft_id ASC").use { statement ->
+            statement.setString(1, projectId.value.toString())
+            statement.executeQuery().use { results -> buildList { while (results.next()) add(results.resourceDraftMetadata()) } }
+        }
+    }
+
+    override suspend fun saveResourceDraft(metadata: ResourceDraftMetadata) {
+        connection().use { connection ->
+            connection.prepareStatement(
+                """INSERT INTO resource_drafts (draft_id, project_id, original_apk_sha256, relative_path, revision, created_at_ms, updated_at_ms, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(draft_id) DO UPDATE SET original_apk_sha256=excluded.original_apk_sha256, relative_path=excluded.relative_path,
+                   revision=excluded.revision, updated_at_ms=excluded.updated_at_ms, status=excluded.status""",
+            ).use { statement ->
+                statement.setString(1, metadata.draftId.toString()); statement.setString(2, metadata.projectId.value.toString())
+                statement.setString(3, metadata.originalApkSha256); statement.setString(4, metadata.relativePath.value)
+                statement.setLong(5, metadata.revision); statement.setLong(6, metadata.createdAt.toEpochMilli())
+                statement.setLong(7, metadata.updatedAt.toEpochMilli()); statement.setString(8, metadata.status.name)
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    override suspend fun deleteResourceDraft(draftId: UUID) {
+        connection().use { connection ->
+            connection.prepareStatement("DELETE FROM resource_drafts WHERE draft_id = ?").use { statement ->
+                statement.setString(1, draftId.toString()); statement.executeUpdate()
+            }
+        }
+    }
+
     private fun connection(): Connection = DriverManager.getConnection(url).also { connection ->
         connection.createStatement().use { it.execute("PRAGMA foreign_keys = ON") }
     }
@@ -193,6 +235,13 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestD
                     draft_id TEXT NOT NULL, original_apk_sha256 TEXT NOT NULL, relative_path TEXT NOT NULL,
                     revision INTEGER NOT NULL, created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL,
                     validation_status TEXT NOT NULL
+                )""",
+            )
+            statement.execute(
+                """CREATE TABLE IF NOT EXISTS resource_drafts (
+                    draft_id TEXT PRIMARY KEY NOT NULL, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    original_apk_sha256 TEXT NOT NULL, relative_path TEXT NOT NULL, revision INTEGER NOT NULL,
+                    created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL, status TEXT NOT NULL
                 )""",
             )
         }
@@ -244,6 +293,13 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestD
         originalApkSha256 = getString("original_apk_sha256"), relativePath = RelativePath.of(getString("relative_path")),
         revision = getLong("revision"), createdAt = Instant.ofEpochMilli(getLong("created_at_ms")),
         updatedAt = Instant.ofEpochMilli(getLong("updated_at_ms")), status = SmaliDraftStatus.valueOf(getString("status")),
+    )
+
+    private fun java.sql.ResultSet.resourceDraftMetadata() = ResourceDraftMetadata(
+        draftId = UUID.fromString(getString("draft_id")), projectId = ProjectId(UUID.fromString(getString("project_id"))),
+        originalApkSha256 = getString("original_apk_sha256"), relativePath = RelativePath.of(getString("relative_path")),
+        revision = getLong("revision"), createdAt = Instant.ofEpochMilli(getLong("created_at_ms")),
+        updatedAt = Instant.ofEpochMilli(getLong("updated_at_ms")), status = ResourceDraftStatus.valueOf(getString("status")),
     )
 
     private fun java.sql.ResultSet.getLongOrNull(column: String): Long? = getLong(column).takeUnless { wasNull() }
