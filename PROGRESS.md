@@ -9,7 +9,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
 | 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Complete (staged/read-only; no source DEX/APK replacement) |
-| 0.4 | Resource explorer/editor, validation | Not started |
+| 0.4 | Resource explorer/editor, validation | In progress (read-only explorer implemented; staged resource drafts pending) |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
 | 1.0 | Integration + stabilization | Not started |
 
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement a bounded in-house `resources.arsc` reader for simple literal string/color/dimen entries plus generated malformed/cap tests. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Owner: recheck the ChuturPaan resource list after restarting the desktop app and report whether literals are now individually delimited. Then add generated string-pool boundary fixtures before starting staged resource drafts. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -201,3 +201,5 @@ Implement a bounded in-house `resources.arsc` reader for simple literal string/c
 - Test log (2026-11-18): with `SMALIX_RESOURCE_FIXTURE` set to SimBridge, `... .\gradlew.bat :engine-manifest:test --tests '*ResourceTableFixtureIntegrationTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 53s**. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
 - 2026-11-18: Added desktop read-only resource explorer: it indexes only validated `resources.arsc`, supports name/literal-value search through `DefaultResourceSearch`, caps display at 500 rows, and shows qualified name/configuration/value. No resource draft, extraction, archive entry replacement, APK write, rebuild, export, or signing control was added. Desktop interaction has not yet been manually verified.
 - Test log (2026-11-18): `... .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 15s**. This verifies compilation only. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
+- 2026-11-18: Corrected the resource-table string-pool reader after the ChuturPaan explorer showed separator/merged text. It now follows each declared UTF-16/UTF-8 length and required terminator, so it cannot scan into the next pooled string; it validates pool offsets/bounds, filters invalid compiled keys before model construction, streams the table under the size cap, and reports malformed bounds without exposing a stack trace. APK bytes remain read-only. Desktop recheck is still pending.
+- Test log (2026-11-18): `... .\gradlew.bat :engine-manifest:test --no-daemon --console=plain` regenerated five JUnit XML suites: 8 tests passed, 0 failures/errors; the optional manifest fixture was skipped because its environment variable was unset. The owned SimBridge resource fixture passed. A separate `SMALIX_RESOURCE_FIXTURE=E:\Safa\dist\ChuturPaan-1.0.0-universal.apk ... :engine-manifest:test --tests '*ResourceTableFixtureIntegrationTest'` run passed (1 test, 0 failures/errors). Gradle launcher completion text was not captured by the terminal wrapper, so no `BUILD SUCCESSFUL` claim is made from these runs.
