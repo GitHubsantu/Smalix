@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **resolved AXML names/namespaces**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **in-memory manifest draft model**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Resolve binary-AXML element/attribute names and namespaces from the bounded string pool in the read-only document tree, before any in-memory manifest draft applier; no APK or ZIP replacement is authorized yet.
+Define and test the constrained in-memory manifest draft model for approved literal/permission edits, before any binary-AXML, ZIP, or APK replacement is authorized.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -250,3 +250,5 @@ Resolve binary-AXML element/attribute names and namespaces from the bounded stri
 - Test log (2026-11-18): `BinaryXmlDocumentReaderTest` JUnit XML records **4 tests, 0 skipped, 0 failures, 0 errors** after the semantic-tree addition. The terminal wrapper did not retain a final Gradle completion line for this rerun, so no new `BUILD SUCCESSFUL` claim is made from it.
 - 2026-11-18: Completed bounded read-only binary-AXML string-pool decoding in `BinaryXmlDocumentReader`. It resolves UTF-8 and UTF-16 values (including Android long UTF-16 lengths), constrains offset tables, offsets, prefixes, and terminators to the string-data range, and returns `MalformedApk` for malformed pools. The document still retains raw name/namespace indexes; it does not apply a draft or write a manifest, ZIP, APK, output, export, alignment, or signature.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryXmlDocumentReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 29s** (`11 actionable tasks: 4 executed, 7 up-to-date`). `BinaryXmlDocumentReaderTest` ran **7 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added a resolved, read-only view to `BinaryXmlDocument`: `resolvedRootElements` maps bounded string-pool entries to element names, attribute names, namespace URIs, and raw attribute values while preserving the raw-index tree for lossless work. Invalid string references return `MalformedApk`. No draft application, binary-AXML replacement, ZIP/APK write, output, export, alignment, or signing behavior was added.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryXmlDocumentReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 26s** (`11 actionable tasks: 4 executed, 7 up-to-date`). `BinaryXmlDocumentReaderTest` ran **9 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.

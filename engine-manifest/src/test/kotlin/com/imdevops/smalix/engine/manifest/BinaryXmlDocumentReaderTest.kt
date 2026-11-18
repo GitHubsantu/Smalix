@@ -40,6 +40,33 @@ class BinaryXmlDocumentReaderTest {
         val document = assertInstanceOf(InspectionResult.Success::class.java, result).value as BinaryXmlDocument
         assertEquals(listOf("manifest", "package"), document.strings)
         assertEquals(listOf(BinaryXmlElement(-1, 0, listOf(BinaryXmlAttribute(-1, 1, -1, 0x10, 26)), emptyList())), document.rootElements)
+        assertEquals(
+            listOf(ResolvedBinaryXmlElement(null, "manifest", listOf(ResolvedBinaryXmlAttribute(null, "package", null, 0x10, 26)), emptyList())),
+            document.resolvedRootElements,
+        )
+    }
+
+    @Test fun `resolves element and attribute namespaces from the string pool`() {
+        val namespace = "http://schemas.android.com/apk/res/android"
+        val start = startTag(
+            namespaceIndex = 0,
+            nameIndex = 1,
+            attributes = listOf(BinaryXmlAttribute(0, 2, 3, 0x03, 3)),
+        )
+        val result = BinaryXmlDocumentReader().read(document(stringPoolUtf8(namespace, "application", "label", "Smalix"), start, endTag(nameIndex = 1, namespaceIndex = 0)))
+
+        val document = assertInstanceOf(InspectionResult.Success::class.java, result).value as BinaryXmlDocument
+        assertEquals(
+            listOf(ResolvedBinaryXmlElement(namespace, "application", listOf(ResolvedBinaryXmlAttribute(namespace, "label", "Smalix", 0x03, 3)), emptyList())),
+            document.resolvedRootElements,
+        )
+    }
+
+    @Test fun `rejects an out of range element name string index`() {
+        val result = BinaryXmlDocumentReader().read(document(stringPoolUtf8("manifest"), startTag(nameIndex = 1, attributes = emptyList()), endTag(nameIndex = 1)))
+
+        val failure = assertInstanceOf(InspectionResult.Failure::class.java, result)
+        assertInstanceOf(AnalysisFailure.MalformedApk::class.java, failure.error)
     }
 
     @Test fun `resolves long UTF-16 string pool values`() {
@@ -96,9 +123,9 @@ class BinaryXmlDocumentReaderTest {
         }.array()
     }
 
-    private fun startTag(nameIndex: Int, attributes: List<BinaryXmlAttribute>): ByteArray {
+    private fun startTag(nameIndex: Int, attributes: List<BinaryXmlAttribute>, namespaceIndex: Int = -1): ByteArray {
         val bytes = ByteBuffer.allocate(36 + attributes.size * 20).order(ByteOrder.LITTLE_ENDIAN)
-        bytes.putShort(0x0102).putShort(16).putInt(bytes.capacity()).putInt(0).putInt(-1).putInt(-1).putInt(nameIndex)
+        bytes.putShort(0x0102).putShort(16).putInt(bytes.capacity()).putInt(0).putInt(-1).putInt(namespaceIndex).putInt(nameIndex)
         bytes.putShort(20).putShort(20).putShort(attributes.size.toShort()).putShort(0).putShort(0).putShort(0)
         attributes.forEach { attribute ->
             bytes.putInt(attribute.namespaceIndex).putInt(attribute.nameIndex).putInt(attribute.rawValueIndex).putShort(8).put(0).put(attribute.valueType.toByte()).putInt(attribute.valueData)
@@ -106,8 +133,8 @@ class BinaryXmlDocumentReaderTest {
         return bytes.array()
     }
 
-    private fun endTag(nameIndex: Int): ByteArray = ByteBuffer.allocate(24).order(ByteOrder.LITTLE_ENDIAN).apply {
-        putShort(0x0103).putShort(16).putInt(24).putInt(0).putInt(-1).putInt(-1).putInt(nameIndex)
+    private fun endTag(nameIndex: Int, namespaceIndex: Int = -1): ByteArray = ByteBuffer.allocate(24).order(ByteOrder.LITTLE_ENDIAN).apply {
+        putShort(0x0103).putShort(16).putInt(24).putInt(0).putInt(-1).putInt(namespaceIndex).putInt(nameIndex)
     }.array()
 
     private fun stringPoolUtf8(vararg values: String): ByteArray {

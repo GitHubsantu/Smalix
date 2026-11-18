@@ -161,6 +161,7 @@ class BinaryXmlDocument internal constructor(bytes: ByteArray, chunks: List<Bina
     val chunks: List<BinaryXmlChunk> = chunks.toList()
     val strings: List<String> = strings.toList()
     val rootElements: List<BinaryXmlElement> = roots.toList()
+    val resolvedRootElements: List<ResolvedBinaryXmlElement> = rootElements.map { it.resolve(strings) }
 
     /** Returns a defensive copy suitable for a later in-memory applier. */
     fun originalBytes(): ByteArray = source.copyOf()
@@ -180,3 +181,45 @@ data class BinaryXmlAttribute(
     val valueType: Int,
     val valueData: Int,
 )
+
+/** Read-only string-resolved view of a binary XML element. Raw indexes remain available on [BinaryXmlElement]. */
+data class ResolvedBinaryXmlElement(
+    val namespaceUri: String?,
+    val name: String,
+    val attributes: List<ResolvedBinaryXmlAttribute>,
+    val children: List<ResolvedBinaryXmlElement>,
+)
+
+/** Read-only string-resolved names for an attribute; its typed value remains raw. */
+data class ResolvedBinaryXmlAttribute(
+    val namespaceUri: String?,
+    val name: String,
+    val rawValue: String?,
+    val valueType: Int,
+    val valueData: Int,
+)
+
+private fun BinaryXmlElement.resolve(strings: List<String>): ResolvedBinaryXmlElement = ResolvedBinaryXmlElement(
+    namespaceUri = strings.optional(namespaceIndex, "element namespace"),
+    name = strings.required(nameIndex, "element name"),
+    attributes = attributes.map { it.resolve(strings) },
+    children = children.map { it.resolve(strings) },
+)
+
+private fun BinaryXmlAttribute.resolve(strings: List<String>): ResolvedBinaryXmlAttribute = ResolvedBinaryXmlAttribute(
+    namespaceUri = strings.optional(namespaceIndex, "attribute namespace"),
+    name = strings.required(nameIndex, "attribute name"),
+    rawValue = strings.optional(rawValueIndex, "attribute raw value"),
+    valueType = valueType,
+    valueData = valueData,
+)
+
+private fun List<String>.required(index: Int, field: String): String {
+    require(index in indices) { "Invalid binary XML $field string index." }
+    return this[index]
+}
+
+private fun List<String>.optional(index: Int, field: String): String? = when (index) {
+    -1 -> null
+    else -> required(index, field)
+}
