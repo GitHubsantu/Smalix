@@ -39,4 +39,10 @@ class InspectionModelsTest {
         assertThrows(IllegalArgumentException::class.java) { HookSignature("sample.Main", "run", "()", "V") }
         assertEquals("()V", HookSignature("Lsample/Main;", "run", "()", "V").methodDescriptor)
     }
+
+    @Test fun `resource index rejects duplicate id configuration and unsafe entry paths`() {
+        val entry = ResourceEntry(0x7f01_0001, "sample.app", ResourceType.STRING, "title", "", ResourceValue.Literal("Hello"), "resources.arsc")
+        assertThrows(IllegalArgumentException::class.java) { ResourceIndex(listOf(entry, entry)) }
+        assertThrows(IllegalArgumentException::class.java) { entry.copy(sourceEntryPath = "../resources.arsc") }
+    }
 }

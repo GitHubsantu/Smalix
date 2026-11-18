@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Await owner approval of `docs/V0_4_DESIGN.md`, then implement only typed resource models/contracts and fixture-independent tests. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Implement a bounded in-house `resources.arsc` reader for simple literal string/color/dimen entries plus generated malformed/cap tests. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -191,3 +191,5 @@ Await owner approval of `docs/V0_4_DESIGN.md`, then implement only typed resourc
 - 2026-11-18: Owner manually verified temporary assembly validation on `Customdialog.zenx(Landroid/app/Activity;)V`: a staged revision saved successfully with `.locals 0` and `return-void`; `original.apk` remained unchanged. Corrected future generated stubs to use `.locals`, not total `.registers`, so parameter methods validate correctly. v0.3 is complete for the staged/read-only scope; it does not replace source DEX/APK bytes or rebuild/export/sign.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 1s**. Added parameter-method `.locals` temporary-assembly coverage. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
 - 2026-11-18: Added proposed `docs/V0_4_DESIGN.md`: bounded in-house `resources.arsc` inspection, read-only explorer, and SHA-bound staged literal string/color/dimen drafts only. It defers resource compilation, archive replacement, rebuild, export, align, and signing to v0.5; no resource library/dependency is proposed or verified. No feature code or tests were added/run in this design-only step.
+- 2026-11-18: Owner approved v0.4 design. Implemented slice 1 only: resource index/entry/value/query models and `ResourceReader`/`ResourceSearch` contracts. Models enforce 32-bit resource IDs, safe source paths, qualified identifiers, supported types, and no duplicate ID/configuration pairs. No `resources.arsc` reader, storage, UI, draft editing, or APK write capability was added.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 9s**. Tests cover duplicate/unsafe resource model rejection and resource contract shape. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.

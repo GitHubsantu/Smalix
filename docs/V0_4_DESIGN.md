@@ -8,7 +8,7 @@ Status: proposed; owner approval required before code.
 
 ## First increment
 
-- Add typed resource models/contracts for a bounded read-only index: resource ID, package/type/name, configuration qualifier, raw value/reference, and source entry path.
+- Add typed resource models/contracts for a bounded read-only index: resource ID, package/type/name, configuration qualifier, raw value/reference, and source entry path. **Implemented; parser pending.**
 - Implement a small in-house binary resource-table reader for simple string/color/dimen values only. Unknown chunks/types/configurations return typed unsupported or malformed results; they are never silently changed.
 - Desktop explorer lists types and searches exact name/value. Resource-file inventory remains read-only and uses the validated ZIP inventory.
 

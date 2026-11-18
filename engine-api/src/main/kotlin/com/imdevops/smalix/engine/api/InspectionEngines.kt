@@ -15,6 +15,9 @@ import com.imdevops.smalix.core.model.ManifestEdit
 import com.imdevops.smalix.core.model.ManifestEditResult
 import com.imdevops.smalix.core.model.ManifestValidation
 import com.imdevops.smalix.core.model.ValidatedApk
+import com.imdevops.smalix.core.model.ResourceEntry
+import com.imdevops.smalix.core.model.ResourceIndex
+import com.imdevops.smalix.core.model.ResourceQuery
 
 interface ApkAnalyzer {
     suspend fun analyze(request: AnalysisRequest): InspectionResult<ApkAnalysis>
@@ -38,6 +41,15 @@ interface DexSearch {
 
 interface HookReferenceFinder {
     suspend fun find(apk: ValidatedApk, target: HookSignature): InspectionResult<List<HookReference>>
+}
+
+/** Reads only bounded resources.arsc metadata; implementations must not extract or modify APK entries. */
+interface ResourceReader {
+    suspend fun index(apk: ValidatedApk): InspectionResult<ResourceIndex>
+}
+
+interface ResourceSearch {
+    fun find(index: ResourceIndex, query: ResourceQuery): List<ResourceEntry>
 }
 
 interface ManifestDraftEditor {
