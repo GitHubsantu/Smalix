@@ -45,4 +45,14 @@ class InspectionModelsTest {
         assertThrows(IllegalArgumentException::class.java) { ResourceIndex(listOf(entry, entry)) }
         assertThrows(IllegalArgumentException::class.java) { entry.copy(sourceEntryPath = "../resources.arsc") }
     }
+
+    @Test fun `resource drafts are created only for literal resource values`() {
+        val literal = ResourceEntry(0x7f01_0001, "sample.app", ResourceType.STRING, "title", "", ResourceValue.Literal("Hello"), "resources.arsc")
+        val draft = requireNotNull(ResourceDraft.from(ProjectId.random(), "a".repeat(64), literal))
+
+        assertEquals("Hello", draft.originalValue)
+        assertEquals("Hello", draft.proposedValue)
+        assertEquals(0, draft.revision)
+        assertEquals(null, ResourceDraft.from(ProjectId.random(), "a".repeat(64), literal.copy(value = ResourceValue.Reference("@string/other"))))
+    }
 }

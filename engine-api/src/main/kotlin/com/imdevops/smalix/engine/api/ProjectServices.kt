@@ -6,6 +6,9 @@ import com.imdevops.smalix.core.model.ManifestDraft
 import com.imdevops.smalix.core.model.ManifestDraftMetadata
 import com.imdevops.smalix.core.model.SmaliDraft
 import com.imdevops.smalix.core.model.SmaliValidation
+import com.imdevops.smalix.core.model.ResourceDraft
+import com.imdevops.smalix.core.model.ResourceDraftMetadata
+import com.imdevops.smalix.core.model.ResourceDraftValidation
 import com.imdevops.smalix.core.model.Workspace
 import java.nio.file.Path
 
@@ -66,3 +69,21 @@ interface SmaliDraftRepository {
 }
 
 interface SmaliDraftValidator { fun validate(draft: SmaliDraft): SmaliValidation }
+
+/** Stores a staged resource draft as workspace text only; it must never write resources.arsc or APK bytes. */
+interface ResourceDraftStore {
+    suspend fun load(workspace: Workspace, draftId: java.util.UUID, expectedOriginalApkSha256: String): ResourceDraft?
+    suspend fun save(workspace: Workspace, draft: ResourceDraft)
+    suspend fun discard(workspace: Workspace, draftId: java.util.UUID)
+}
+
+/** Persists only resource-draft metadata; target/value text remains in the workspace draft file. */
+interface ResourceDraftRepository {
+    suspend fun findResourceDraft(draftId: java.util.UUID): ResourceDraftMetadata?
+    suspend fun listResourceDrafts(projectId: ProjectId): List<ResourceDraftMetadata>
+    suspend fun saveResourceDraft(metadata: ResourceDraftMetadata)
+    suspend fun deleteResourceDraft(draftId: java.util.UUID)
+}
+
+/** Performs lexical validation only; applying a draft remains outside v0.4. */
+interface ResourceDraftValidator { fun validate(draft: ResourceDraft): ResourceDraftValidation }

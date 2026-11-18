@@ -8,6 +8,9 @@ import com.imdevops.smalix.core.model.ResourceIndex
 import com.imdevops.smalix.core.model.ResourceQuery
 import com.imdevops.smalix.core.model.ResourceType
 import com.imdevops.smalix.core.model.ResourceValue
+import com.imdevops.smalix.core.model.ResourceDraft
+import com.imdevops.smalix.core.model.ResourceDraftValidation
+import com.imdevops.smalix.core.model.ProjectId
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Test
 
@@ -31,5 +34,13 @@ class ContractsTest {
         }
         val entry = ResourceEntry(1, "sample.app", ResourceType.STRING, "name", "", ResourceValue.Literal("value"), "resources.arsc")
         assertEquals(listOf(entry), reader.find(ResourceIndex(listOf(entry)), ResourceQuery.Text("value")))
+    }
+
+    @Test fun `resource draft validator contract remains staged only`() {
+        val entry = ResourceEntry(1, "sample.app", ResourceType.COLOR, "primary", "", ResourceValue.Literal("#112233"), "resources.arsc")
+        val draft = requireNotNull(ResourceDraft.from(ProjectId.random(), "a".repeat(64), entry))
+        val validator = object : ResourceDraftValidator { override fun validate(draft: ResourceDraft) = ResourceDraftValidation(emptyList()) }
+
+        assertEquals(true, validator.validate(draft).isValid)
     }
 }
