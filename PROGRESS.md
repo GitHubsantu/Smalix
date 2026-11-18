@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement v0.3 slice 4: compose a read-only DEX class browser using the bounded reader/search, then manually verify it with an owned APK. No DEX/Smali write, assembly, APK rebuild, export, or signing.
+Design the bounded hook-reference query slice and obtain approval before implementation. Keep v0.3 read-only: no DEX/Smali write, assembly, APK rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -148,3 +148,5 @@ Implement v0.3 slice 4: compose a read-only DEX class browser using the bounded 
 - 2026-11-18: Added `engine-dex:BoundedDexReader`. It opens only canonical DEX ZIP entries, caps entry bytes/class count, parses the DEX header/string/type/class tables to produce class descriptors, and returns typed malformed failures. It never executes DEX or writes APK/DEX bytes.
 - Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Generated tests cover one-class descriptor indexing, malformed-header rejection, and class-limit rejection. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
 - 2026-11-18: Added the read-only desktop DEX browser action. It indexes only the already validated archive and displays class descriptors; it has no DEX/Smali write action. Owner manually verified the browser action. Milestones updated: v0.2 complete (staged drafts only), v0.3 in progress.
+- 2026-11-18: Added `DexSmaliRenderer`, a bounded read-only rendering of indexed class/member metadata. It explicitly does not decode method bodies and provides no editor, save, assembler, or APK write path.
+- Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Renderer test verifies class, field, method, and code-offset text output. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
