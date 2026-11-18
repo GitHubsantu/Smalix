@@ -24,7 +24,7 @@ class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, pr
             if (bytes.size > maxBytes) return InspectionResult.Failure(AnalysisFailure.LimitExceeded("resource table size", "resources.arsc exceeds $maxBytes bytes."))
             InspectionResult.Success(ResourceIndex(parse(bytes)))
         }
-        } catch (e: IllegalArgumentException) { return InspectionResult.Failure(AnalysisFailure.MalformedApk(e.message ?: "Malformed resources.arsc."))
+        } catch (e: IllegalArgumentException) { return InspectionResult.Failure(AnalysisFailure.MalformedApk("${e.message ?: "Malformed resources.arsc."} at ${e.stackTrace.firstOrNull()}"))
         } catch (e: Exception) { return InspectionResult.Failure(AnalysisFailure.IoFailure("Unable to read resources.arsc: ${e.message ?: "I/O error"}")) }
     }
 
@@ -77,7 +77,10 @@ class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, pr
 
     private fun dimen(data: Int): String { val unit = arrayOf("px", "dp", "sp", "pt", "in", "mm").getOrElse(data and 0xf) { return "0px" }; val radix = doubleArrayOf(1.0/256, 1.0/32768, 1.0/8388608, 1.0/2147483648.0)[(data shr 4) and 3]; return "%.6f".format(java.util.Locale.ROOT, (data shr 8) * radix).trimEnd('0').trimEnd('.') + unit }
     private fun stringPool(b: ByteBuffer, start: Int, end: Int): List<String> { val c = chunk(b, start, end); require(c.type == STRING_POOL) { "Missing resource string pool." }; val count = i32(b, start+8); require(count in 0..maxEntries); val flags=i32(b,start+16); val base=start+i32(b,start+20); return List(count) { n -> val p=base+i32(b,start+c.header+n*4); utf8(b,p, flags and 0x100 != 0) } }
-    private fun utf8(b: ByteBuffer, p: Int, utf8: Boolean): String { require(utf8) { "UTF-16 resource pools are unsupported." }; var q=p; if (u8(b,q) and 0x80 != 0) q++; val len=u8(b,q).let { if (it and 0x80 == 0) it else ((it and 0x7f) shl 8) or u8(b,q+1) }; q += if (u8(b,q) and 0x80 == 0) 1 else 2; val a=ByteArray(len) { u8(b,q+it).toByte() }; return a.toString(Charsets.UTF_8) }
+    private fun utf8(b: ByteBuffer, p: Int, utf8: Boolean): String {
+        if (!utf8) { val first=u16(b,p); val len=if(first and 0x8000 == 0) first else ((first and 0x7fff) shl 16) or u16(b,p+2); val q=p + if(first and 0x8000 == 0) 2 else 4; return CharArray(len) { u16(b,q+it*2).toChar() }.concatToString() }
+        var q=p; if (u8(b,q) and 0x80 != 0) q++; val len=u8(b,q).let { if (it and 0x80 == 0) it else ((it and 0x7f) shl 8) or u8(b,q+1) }; q += if (u8(b,q) and 0x80 == 0) 1 else 2; val a=ByteArray(len) { u8(b,q+it).toByte() }; return a.toString(Charsets.UTF_8)
+    }
     private fun utf16Fixed(b: ByteBuffer, p: Int, bytes: Int): String = buildString { for (i in 0 until bytes step 2) { val c=u16(b,p+i); if(c==0) break; append(c.toChar()) } }
     private fun chunk(b: ByteBuffer, start: Int, end: Int): Chunk { require(start >= 0 && start+8 <= end); val h=u16(b,start+2); val s=i32(b,start+4); require(h>=8 && s>=h && start+s<=end); return Chunk(u16(b,start),h,s,start,start+s) }
     private fun u8(b: ByteBuffer,p:Int)=b.get(p).toInt() and 0xff; private fun u16(b: ByteBuffer,p:Int)=b.getShort(p).toInt() and 0xffff; private fun i32(b: ByteBuffer,p:Int)=b.getInt(p)

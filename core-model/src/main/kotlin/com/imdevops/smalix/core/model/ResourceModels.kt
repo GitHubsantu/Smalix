@@ -27,7 +27,7 @@ data class ResourceEntry(
 
     private companion object {
         val PACKAGE = Regex("^[A-Za-z][A-Za-z0-9_.]*$")
-        val NAME = Regex("^[A-Za-z_][A-Za-z0-9_]*$")
+        val NAME = Regex("^[^/\\\\\u0000]+$")
         val QUALIFIER = Regex("^[A-Za-z0-9_-]+$")
     }
 }
