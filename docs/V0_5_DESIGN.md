@@ -1,6 +1,6 @@
 # v0.5 design — isolated rebuild, signing, export
 
-Status: proposed; owner approval required before code.
+Status: owner approved; toolchain verification in progress.
 
 ## Boundary
 
@@ -27,7 +27,7 @@ Any change after alignment requires a new alignment and signature. No staged dra
 
 | Need | Candidate | License/JDK/Windows status |
 |---|---|---|
-| APK signatures | `com.android.tools.build:apksig` | Unverified for this project; inspect artifact notices/license and JDK 17 signing/verify behavior first. |
+| APK signatures | `com.android.tools.build:apksig:8.7.3` | Apache-2.0 POM and packaged `LICENSE` inspected. JDK 17/Windows verifier behavior was tested against a temporary unsigned APK and an owner-provided signed APK. Signing behavior remains unverified. |
 | ZIP alignment | Android `zipalign.exe` | Unverified; verify Windows binary provenance, notices, invocation, and output determinism. |
 | Manifest/resources | Apktool + bundled `aapt2.exe`, or in-house writers | Unverified; choose only after license/provenance/JDK/Windows tests. |
 | DEX rebuild | verified `smali` temporary assembly plus a bounded DEX replacement pipeline | `smali` was verified only for temporary JDK 17 validation, not production APK rebuilding. |

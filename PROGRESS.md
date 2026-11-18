@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Design and verify the first draft-application toolchain before any APK mutation, export, alignment, or signing.
+Verify the first isolated draft-application toolchain before any APK mutation, export, alignment, or signing; `apksig` signing and `zipalign` remain unverified.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -237,3 +237,5 @@ Design and verify the first draft-application toolchain before any APK mutation,
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 25s** (`19 actionable tasks: 3 executed, 16 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added automated `BuildPreflightUseCase` coverage. It proves a matching analyzed/request/re-inspected SHA creates one isolated build input, while a stale request SHA is rejected before another copy is made. No draft application, APK mutation, export, alignment, or signing was added.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*BuildPreflightUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 11s** (`26 actionable tasks: 3 executed, 23 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Verified the `apksig:8.7.3` artifact only for read-only signature verification. Its resolved POM declares Apache-2.0 and its JAR contains `LICENSE`; JDK 17 test coverage verified an unsigned temporary APK is reported as unverified without byte changes and the owner-provided SimBridge APK verifies successfully. `apksig` signing and `zipalign` remain unverified; no APK was signed, aligned, or exported.
+- Test log (2026-11-18): with `SMALIX_SIGNED_APK_FIXTURE=E:\project\simbridge-android\dist\SimBridge-1.1.3-universal.apk`, `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*ApkSigCompatibilityTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 12s** (`26 actionable tasks: 2 executed, 24 up-to-date`). JUnit reported 2 tests, 0 skipped, 0 failures/errors. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.

@@ -9,6 +9,7 @@ dependencies {
     implementation(compose.material3)
     implementation(libs.koin.core)
     implementation(libs.coroutines.core)
+    testImplementation(libs.apksig)
     listOf("core-model","core-common","core-database","core-storage","engine-api","engine-apk",
            "engine-manifest","engine-dex","feature-home","feature-projects","feature-inspector")
         .forEach { implementation(project(":$it")) }
