@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner manually verifies staged Smali text editing: open a method draft, make a valid text-only change, save, reopen to confirm revision/text, try invalid text and confirm old text remains, then discard. Do not add a Smali assembler/library or DEX/APK write path without separate approval and verification.
+Await owner approval to perform a separate `org.smali:smali` artifact-license and JDK 17 smoke verification. Do not add the library, assemble drafts, or add DEX/APK write paths unless that verification is approved and succeeds.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -182,3 +182,4 @@ Owner manually verifies staged Smali text editing: open a method draft, make a v
 - 2026-11-18: Owner manually verified the staged-Smali selection/open/reopen/discard UI slice. Added a separate proposed staged-text editing increment to `docs/V0_3_DESIGN.md`; it remains workspace-text-only, revision/SHA bound, locally bounded, and explicitly defers assembler/syntax validation, DEX/APK writing, rebuild, export, and signing. No feature code or tests were added/run for this design-only step.
 - 2026-11-18: Implemented the approved staged-Smali text editing slice. The desktop UI shows only staged method text and explicitly states that `original.apk` is unchanged. Save re-inspects SHA-256, requires matching workspace/SQLite state, increments the revision, and rejects invalid local text without replacing the old draft. The local validator is bounded only (nonblank, no NUL, 256,000-character cap, `.method`/`.end method` shape); it does not assemble or fully parse Smali. Desktop interaction has not yet been manually verified.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 18s**. Added use-case coverage for revisioned save and validation rejection preserving prior staged text. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
+- 2026-11-18: Owner manually verified staged-Smali text editing: valid save/reopen, invalid-text rejection preserving prior text, and discard. This verifies staged workspace text only; no assembler, DEX/APK write, rebuild, export, or signing behavior is implied.
