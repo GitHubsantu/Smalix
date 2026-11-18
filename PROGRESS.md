@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Reassess v0.4 milestone readiness against the approved staged/read-only boundary. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Implement and test an explicit bounded `resources.arsc` parse deadline. Then reassess v0.4 milestone readiness. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -224,3 +224,5 @@ Reassess v0.4 milestone readiness against the approved staged/read-only boundary
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 17s** (`19 actionable tasks: 1 executed, 18 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added portable resource-reader coverage for the configured table-size limit and an out-of-bounds string-pool offset. Both return typed failures without extracting or changing archive contents.
 - Test log (2026-11-18): `:engine-manifest:test --tests '*BinaryResourceTableReaderTest' --no-daemon --console=plain` regenerated `BinaryResourceTableReaderTest`: 5 tests, 0 failures/errors. The terminal wrapper did not capture Gradle completion text, so no `BUILD SUCCESSFUL` claim is made from this run.
+- 2026-11-18: v0.4 review confirms the read-only explorer and SHA-bound staged literal-draft lifecycle are implemented and manually verified. The approved explicit resource-table parse deadline is still missing, so v0.4 remains in progress; no resource table/APK application is authorized.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 10s** (`40 actionable tasks: 10 executed, 30 up-to-date`). Gradle reported deprecated-features warnings and one existing unchecked-cast test warning in `InShotHookFixtureIntegrationTest`; no test failures.
