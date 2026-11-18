@@ -42,6 +42,8 @@ import com.imdevops.smalix.core.model.DexClass
 import com.imdevops.smalix.core.model.DexMethod
 import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.SmaliDraft
+import com.imdevops.smalix.core.model.ResourceIndex
+import com.imdevops.smalix.core.model.ResourceQuery
 import com.imdevops.smalix.core.model.ZipEntryInfo
 import com.imdevops.smalix.core.storage.FileSystemWorkspaceStore
 import com.imdevops.smalix.core.storage.FileSystemManifestDraftStore
@@ -57,6 +59,8 @@ import com.imdevops.smalix.engine.dex.DexlibHookReferenceFinder
 import com.imdevops.smalix.engine.manifest.BinaryManifestParser
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftEditor
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftValidator
+import com.imdevops.smalix.engine.manifest.BinaryResourceTableReader
+import com.imdevops.smalix.engine.manifest.DefaultResourceSearch
 import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Path
@@ -86,6 +90,8 @@ private fun SmalixScreen() {
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
     var dexIndex by remember { mutableStateOf<DexIndex?>(null) }
+    var resourceIndex by remember { mutableStateOf<ResourceIndex?>(null) }
+    var resourceSearch by remember { mutableStateOf("") }
     var dexSearch by remember { mutableStateOf("") }
     var selectedDexClass by remember { mutableStateOf<DexClass?>(null) }
     var selectedDexMethod by remember { mutableStateOf<DexMethod?>(null) }
@@ -156,6 +162,13 @@ private fun SmalixScreen() {
                     is InspectionResult.Failure -> status = "DEX index failed: ${result.error}"
                 }; busy = false
             } }) { Text("Browse DEX classes") }
+            Button(enabled = !busy && summary != null, onClick = { val value = summary ?: return@Button; scope.launch {
+                busy = true; status = "Indexing validated resources.arsc..."
+                when (val result = withContext(Dispatchers.IO) { BinaryResourceTableReader().index(value.apk.archive) }) {
+                    is InspectionResult.Success -> { resourceIndex = result.value; status = "Read-only resource index loaded (${result.value.entries.size} entries)." }
+                    is InspectionResult.Failure -> status = "Resource index failed: ${result.error}"
+                }; busy = false
+            } }) { Text("Browse resources") }
             Button(enabled = !busy, onClick = ::refresh) { Text("Refresh") }
         }
         Text(status)
@@ -220,6 +233,11 @@ private fun SmalixScreen() {
                         } }) { Text("Save staged Smali text") }
                         Button(enabled = !busy, onClick = { smaliDiscardConfirmation = true }) { Text("Discard staged Smali draft...") }
                     }
+                }
+                resourceIndex?.let { index ->
+                    OutlinedTextField(resourceSearch, { resourceSearch = it }, Modifier.fillMaxWidth(), label = { Text("Resource name/value search") }, enabled = !busy)
+                    val found = resourceSearch.trim().takeIf(String::isNotBlank)?.let { DefaultResourceSearch().find(index, ResourceQuery.Text(it)) } ?: index.entries
+                    InspectorSection("Resources (${found.size})", found.take(500).joinToString("\n") { "${it.qualifiedName}${if (it.configuration.isBlank()) "" else " [${it.configuration}]"} = ${it.value}" }.ifBlank { "No supported literal resources" } + if (found.size > 500) "\nShowing first 500 results." else "")
                 }
                 summary?.let { currentSummary ->
                     InspectorSection("Hook reference search", "Read-only invoke lookup. Enter an exact DEX signature.")
