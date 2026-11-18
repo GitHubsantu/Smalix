@@ -2,6 +2,7 @@ package com.imdevops.smalix.core.model
 
 import java.time.Instant
 import java.util.UUID
+import java.nio.file.Path
 
 data class BuildRequest(
     val id: UUID,
@@ -21,3 +22,10 @@ sealed interface BuildResult {
 }
 
 enum class BuildStage { PRECHECK, COPY, APPLY, VALIDATE, ALIGN, SIGN, VERIFY, EXPORT }
+
+data class BuildWorkspace(
+    val buildId: UUID,
+    val projectId: ProjectId,
+    val root: Path,
+    val inputApk: Path,
+)
