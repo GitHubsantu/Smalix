@@ -38,14 +38,19 @@ import com.imdevops.smalix.core.model.ManifestLabel
 import com.imdevops.smalix.core.model.ActivityInfo
 import com.imdevops.smalix.core.model.PermissionInfo
 import com.imdevops.smalix.core.model.DexIndex
+import com.imdevops.smalix.core.model.DexClass
+import com.imdevops.smalix.core.model.DexMethod
 import com.imdevops.smalix.core.model.Project
+import com.imdevops.smalix.core.model.SmaliDraft
 import com.imdevops.smalix.core.model.ZipEntryInfo
 import com.imdevops.smalix.core.storage.FileSystemWorkspaceStore
 import com.imdevops.smalix.core.storage.FileSystemManifestDraftStore
+import com.imdevops.smalix.core.storage.FileSystemSmaliDraftStore
 import com.imdevops.smalix.engine.apk.ZipApkAnalyzer
 import com.imdevops.smalix.engine.dex.ZipDexDetector
 import com.imdevops.smalix.engine.dex.BoundedDexReader
 import com.imdevops.smalix.engine.dex.DefaultDexSearch
+import com.imdevops.smalix.engine.dex.BasicSmaliDraftValidator
 import com.imdevops.smalix.core.model.DexClassQuery
 import com.imdevops.smalix.core.model.HookSignature
 import com.imdevops.smalix.engine.dex.DexlibHookReferenceFinder
@@ -56,6 +61,7 @@ import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Path
 import java.time.Instant
+import java.util.UUID
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -74,12 +80,17 @@ private fun SmalixScreen() {
     val createProject = remember { ProjectCreationUseCase(repository, workspaceStore) }
     val reopenInspection = remember { ReopenProjectInspectionUseCase(repository, workspaceStore, ProjectInspectionUseCase(repository, inspection)) }
     val drafts = remember { ManifestDraftUseCase(repository, workspaceStore, FileSystemManifestDraftStore(workspaceStore), repository, inspection, DefaultManifestDraftEditor(), DefaultManifestDraftValidator()) }
+    val smaliDrafts = remember { SmaliDraftUseCase(repository, workspaceStore, FileSystemSmaliDraftStore(workspaceStore), repository, inspection, BasicSmaliDraftValidator()) }
     var projects by remember { mutableStateOf(emptyList<Project>()) }
     var selected by remember { mutableStateOf<Project?>(null) }
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
     var dexIndex by remember { mutableStateOf<DexIndex?>(null) }
     var dexSearch by remember { mutableStateOf("") }
+    var selectedDexClass by remember { mutableStateOf<DexClass?>(null) }
+    var selectedDexMethod by remember { mutableStateOf<DexMethod?>(null) }
+    var smaliDraft by remember { mutableStateOf<SmaliDraft?>(null) }
+    var smaliDiscardConfirmation by remember { mutableStateOf(false) }
     var hookClass by remember { mutableStateOf("Lcom/Epic/custom/dialog/Customdialog;") }
     var hookMethod by remember { mutableStateOf("zenx") }
     var hookParams by remember { mutableStateOf("(Landroid/app/Activity;)") }
@@ -165,7 +176,40 @@ private fun SmalixScreen() {
                         term.startsWith("L") -> index.classes.filter { it.descriptor.startsWith(term, ignoreCase = true) }
                         else -> index.classes.filter { it.packageName.startsWith(term, ignoreCase = true) || it.descriptor.contains(term, ignoreCase = true) }
                     }
-                    InspectorSection("DEX classes (${found.size})", found.take(500).joinToString("\n") { it.descriptor }.ifBlank { "No matching classes" } + if (found.size > 500) "\nShowing first 500 results." else "")
+                    InspectorSection("DEX classes (${found.size})", "Read-only index. Select a class, then a method to open a staged text draft.")
+                    LazyColumn(Modifier.fillMaxWidth().height(180.dp)) {
+                        items(found.take(500), key = DexClass::descriptor) { clazz ->
+                            Button(enabled = !busy, onClick = { selectedDexClass = clazz; selectedDexMethod = null; smaliDraft = null }, modifier = Modifier.fillMaxWidth()) { Text(clazz.descriptor) }
+                        }
+                    }
+                    selectedDexClass?.let { clazz ->
+                        InspectorSection("Selected DEX class", "${clazz.dexEntryName}: ${clazz.descriptor}")
+                        LazyColumn(Modifier.fillMaxWidth().height(160.dp)) {
+                            items(clazz.methods, key = { it.name + it.descriptor }) { method ->
+                                Button(enabled = !busy, onClick = { selectedDexMethod = method; smaliDraft = null }, modifier = Modifier.fillMaxWidth()) { Text("${method.name}${method.descriptor}") }
+                            }
+                        }
+                    }
+                    val selectedMethod = selectedDexMethod
+                    val selectedClass = selectedDexClass
+                    if (selectedClass != null && selectedMethod != null && selected != null) {
+                        Button(enabled = !busy, onClick = { val project = selected ?: return@Button; scope.launch {
+                            busy = true; status = "Opening staged Smali draft..."
+                            val proposed = SmaliDraft(smaliDraftId(project.id, selectedClass, selectedMethod), project.id, project.originalSha256 ?: "", selectedClass.dexEntryName, selectedClass.descriptor, selectedMethod.name, selectedMethod.descriptor, 0, methodDraftText(selectedMethod))
+                            when (val result = withContext(Dispatchers.IO) { smaliDrafts.openOrCreate(project.id, proposed, Instant.now().plusSeconds(120)) }) {
+                                is SmaliDraftSessionResult.Ready -> { smaliDraft = result.draft; status = "Staged Smali text opened. original.apk is unchanged." }
+                                SmaliDraftSessionResult.ProjectNotFound -> status = "Project no longer exists."
+                                SmaliDraftSessionResult.ProjectNotReady -> status = "Inspect successfully before opening a staged Smali draft."
+                                is SmaliDraftSessionResult.WorkspaceUnavailable -> status = "Workspace unavailable: ${result.message}"
+                                is SmaliDraftSessionResult.StaleDraft -> status = "Staged Smali draft unavailable: ${result.message}"
+                                is SmaliDraftSessionResult.InspectionFailed -> status = "Smali draft inspection failed: ${result.error}"
+                            }; busy = false
+                        } }) { Text("Open staged Smali draft") }
+                    }
+                    smaliDraft?.let { current ->
+                        InspectorSection("Staged Smali draft", "${current.dexEntryName}: ${current.classDescriptor}->${current.methodName}${current.methodDescriptor}\nRevision ${current.revision}. Text-only staged data; original.apk is unchanged.")
+                        Button(enabled = !busy, onClick = { smaliDiscardConfirmation = true }) { Text("Discard staged Smali draft...") }
+                    }
                 }
                 summary?.let { currentSummary ->
                     InspectorSection("Hook reference search", "Read-only invoke lookup. Enter an exact DEX signature.")
@@ -243,6 +287,13 @@ private fun SmalixScreen() {
         confirmButton = { Button(onClick = { val id = draft!!.projectId; scope.launch { busy = true; discardConfirmation = false; when (withContext(Dispatchers.IO) { drafts.discard(id) }) { DraftDiscardResult.Discarded -> { draft = null; status = "Draft discarded. original.apk is unchanged." }; is DraftDiscardResult.Unavailable -> status = "Draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
         dismissButton = { Button(onClick = { discardConfirmation = false }) { Text("Cancel") } },
     )
+    if (smaliDiscardConfirmation && smaliDraft != null) AlertDialog(
+        onDismissRequest = { smaliDiscardConfirmation = false },
+        title = { Text("Discard staged Smali draft?") },
+        text = { Text("Only the matching work/dex text draft and its metadata will be deleted. original.apk is unchanged.") },
+        confirmButton = { Button(onClick = { val current = smaliDraft!!; scope.launch { busy = true; smaliDiscardConfirmation = false; when (withContext(Dispatchers.IO) { smaliDrafts.discard(current.projectId, current.id) }) { is SmaliDraftSessionResult.Ready -> { smaliDraft = null; status = "Staged Smali draft discarded. original.apk is unchanged." }; else -> status = "Staged Smali draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
+        dismissButton = { Button(onClick = { smaliDiscardConfirmation = false }) { Text("Cancel") } },
+    )
     if (removalConfirmation && draft != null) AlertDialog(
         onDismissRequest = { removalConfirmation = false },
         title = { Text(if (removalIsActivity) "Remove activity declaration?" else "Remove uses-permission?") },
@@ -317,3 +368,9 @@ private fun optionalBoolean(value: String): Boolean? = when (value.trim().lowerc
 }
 
 private fun isOptionalBoolean(value: String): Boolean = value.trim().lowercase() in setOf("", "true", "false")
+
+private fun methodDraftText(method: DexMethod): String =
+    ".method 0x${method.accessFlags.toString(16)} ${method.name}${method.descriptor}\n    # Read-only indexed code offset: ${method.codeOffset ?: "none"}\n.end method"
+
+private fun smaliDraftId(projectId: com.imdevops.smalix.core.model.ProjectId, clazz: DexClass, method: DexMethod): UUID =
+    UUID.nameUUIDFromBytes("${projectId.value}|${clazz.dexEntryName}|${clazz.descriptor}|${method.name}${method.descriptor}".toByteArray())
