@@ -39,17 +39,31 @@ class BinaryResourceTableReaderTest {
         assertEquals(listOf(first, "next"), entries.map { (it.value as ResourceValue.Literal).value })
     }
 
-    private suspend fun index(table: ByteArray) = run {
+    @Test fun `enforces table size cap before reading the table`() = runBlocking {
+        val table = resourceTable(listOf("value"))
+        val result = read(table, BinaryResourceTableReader(maxBytes = table.size - 1))
+        assertTrue((result as InspectionResult.Failure).error is AnalysisFailure.LimitExceeded)
+    }
+
+    @Test fun `rejects an out of bounds string pool offset`() = runBlocking {
+        val table = resourceTable(listOf("value"))
+        ByteBuffer.wrap(table).order(ByteOrder.LITTLE_ENDIAN).putInt(12 + 28, Int.MAX_VALUE)
+        val result = read(table, BinaryResourceTableReader())
+        assertTrue((result as InspectionResult.Failure).error is AnalysisFailure.MalformedApk)
+    }
+
+    private suspend fun index(table: ByteArray) = (read(table, BinaryResourceTableReader()) as InspectionResult.Success).value.entries
+
+    private suspend fun read(table: ByteArray, reader: BinaryResourceTableReader): InspectionResult<com.imdevops.smalix.core.model.ResourceIndex> = run {
         val apk = temporaryDirectory.resolve("table.apk")
         ZipOutputStream(Files.newOutputStream(apk)).use { zip ->
             zip.putNextEntry(ZipEntry("resources.arsc"))
             zip.write(table)
             zip.closeEntry()
         }
-        val result = BinaryResourceTableReader().index(
+        reader.index(
             ValidatedApk(apk, "a".repeat(64), Files.size(apk), listOf(ZipEntryInfo("resources.arsc", table.size.toLong(), table.size.toLong()))),
         )
-        (result as InspectionResult.Success).value.entries
     }
 
     private fun resourceTable(values: List<String>, globalUtf8: Boolean = false): ByteArray {

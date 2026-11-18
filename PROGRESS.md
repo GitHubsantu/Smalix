@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Close remaining v0.4 test gaps: reader cap/malformed-offset coverage and duplicate-target draft coverage, then reassess milestone readiness. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Reassess v0.4 milestone readiness against the approved staged/read-only boundary. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -222,3 +222,5 @@ Close remaining v0.4 test gaps: reader cap/malformed-offset coverage and duplica
 - 2026-11-18: Owner manually verified staged-resource discard: cancel preserves the draft and confirmation removes only the matching workspace JSON/metadata. This confirms staged-draft lifecycle only; `resources.arsc`, `original.apk`, rebuild, export, alignment, and signing remain untouched.
 - 2026-11-18: Resource draft IDs are now deterministic from project ID, inspected original SHA-256, resource ID, and configuration. Reopening the same target therefore reuses one staged draft instead of creating a duplicate target draft. No resource table/APK write was added.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 17s** (`19 actionable tasks: 1 executed, 18 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added portable resource-reader coverage for the configured table-size limit and an out-of-bounds string-pool offset. Both return typed failures without extracting or changing archive contents.
+- Test log (2026-11-18): `:engine-manifest:test --tests '*BinaryResourceTableReaderTest' --no-daemon --console=plain` regenerated `BinaryResourceTableReaderTest`: 5 tests, 0 failures/errors. The terminal wrapper did not capture Gradle completion text, so no `BUILD SUCCESSFUL` claim is made from this run.
