@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **in-memory manifest draft model**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **lossless in-memory label applier**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Define and test the constrained in-memory manifest draft model for approved literal/permission edits, before any binary-AXML, ZIP, or APK replacement is authorized.
+Implement a lossless in-memory binary-AXML applier for a validated literal-label plan, beginning with same-size strings and rejecting unsupported encoding/size/structural changes; no ZIP or APK replacement is authorized.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -252,3 +252,5 @@ Define and test the constrained in-memory manifest draft model for approved lite
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryXmlDocumentReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 29s** (`11 actionable tasks: 4 executed, 7 up-to-date`). `BinaryXmlDocumentReaderTest` ran **7 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added a resolved, read-only view to `BinaryXmlDocument`: `resolvedRootElements` maps bounded string-pool entries to element names, attribute names, namespace URIs, and raw attribute values while preserving the raw-index tree for lossless work. Invalid string references return `MalformedApk`. No draft application, binary-AXML replacement, ZIP/APK write, output, export, alignment, or signing behavior was added.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryXmlDocumentReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 26s** (`11 actionable tasks: 4 executed, 7 up-to-date`). `BinaryXmlDocumentReaderTest` ran **9 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added `ManifestDraftApplicationPlanner`, a UI-independent, in-memory bridge between the existing staged `ManifestDraft` and the lossless AXML document. It produces a stable element-path/string-pool target only for a changed, existing literal `android:label`; it rejects invalid drafts, package/source mismatches, resource-backed labels, missing/ambiguous targets, and all version/SDK/activity/permission changes. It does not alter the document, manifest bytes, ZIP, APK, output, export, alignment, or signing state.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*ManifestDraftApplicationPlannerTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 27s** (`11 actionable tasks: 4 executed, 7 up-to-date`). `ManifestDraftApplicationPlannerTest` ran **3 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
