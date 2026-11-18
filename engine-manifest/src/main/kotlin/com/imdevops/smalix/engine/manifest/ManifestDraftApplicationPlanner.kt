@@ -40,6 +40,9 @@ class ManifestDraftApplicationPlanner(
             return ManifestDraftApplicationPlan.Rejected("The inspected app label does not match the draft source value.")
         }
         if (attribute.valueType != TYPE_STRING) return ManifestDraftApplicationPlan.Rejected("App label is not a literal string value.")
+        if (!document.isUniqueLiteralAttribute(application.path, attributeIndex, attribute.rawValueIndex)) {
+            return ManifestDraftApplicationPlan.Rejected("App label string is shared by another manifest field.")
+        }
 
         return ManifestDraftApplicationPlan.Ready(
             listOf(
@@ -75,6 +78,19 @@ class ManifestDraftApplicationPlanner(
             element.children.forEachIndexed { index, child -> visit(child, path + index) }
         }
         rootElements.forEachIndexed { index, element -> visit(element, listOf(index)) }
+    }
+
+    private fun BinaryXmlDocument.isUniqueLiteralAttribute(targetPath: List<Int>, targetAttribute: Int, stringIndex: Int): Boolean {
+        fun visit(element: BinaryXmlElement, path: List<Int>): Boolean {
+            if (element.nameIndex == stringIndex || element.namespaceIndex == stringIndex) return false
+            element.attributes.forEachIndexed { index, attribute ->
+                val target = path == targetPath && index == targetAttribute
+                if (!target && (attribute.nameIndex == stringIndex || attribute.namespaceIndex == stringIndex || attribute.rawValueIndex == stringIndex)) return false
+                if (!target && attribute.valueType == TYPE_STRING && attribute.valueData == stringIndex) return false
+            }
+            return element.children.withIndex().all { (index, child) -> visit(child, path + index) }
+        }
+        return rootElements.withIndex().all { (index, element) -> visit(element, listOf(index)) }
     }
 
     private companion object {

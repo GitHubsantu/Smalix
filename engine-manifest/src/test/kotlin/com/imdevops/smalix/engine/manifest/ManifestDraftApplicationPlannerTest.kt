@@ -47,6 +47,16 @@ class ManifestDraftApplicationPlannerTest {
         assertTrue(rejected.message.contains("resource-backed"))
     }
 
+    @Test fun `rejects a literal label string shared by another manifest field`() {
+        val original = manifest(ManifestLabel.Literal("Old"))
+        val draft = draft(original).copy(label = ManifestLabel.Literal("New"))
+
+        val result = planner.plan(document("Old", shared = true), original, draft)
+
+        val rejected = assertInstanceOf(ManifestDraftApplicationPlan.Rejected::class.java, result)
+        assertTrue(rejected.message.contains("shared"))
+    }
+
     private fun manifest(label: ManifestLabel) = ManifestInfo(
         packageName = "com.example",
         versionName = "1.0",
@@ -60,10 +70,10 @@ class ManifestDraftApplicationPlannerTest {
 
     private fun draft(manifest: ManifestInfo) = ManifestDraft.from(ProjectId.random(), "a".repeat(64), manifest)
 
-    private fun document(label: String): BinaryXmlDocument = BinaryXmlDocument(
+    private fun document(label: String, shared: Boolean = false): BinaryXmlDocument = BinaryXmlDocument(
         bytes = byteArrayOf(),
         chunks = emptyList(),
-        strings = listOf("manifest", "application", ANDROID_NAMESPACE, "label", label),
+        strings = listOf("manifest", "application", ANDROID_NAMESPACE, "label", label, "meta-data"),
         roots = listOf(
             BinaryXmlElement(
                 namespaceIndex = -1,
@@ -76,6 +86,14 @@ class ManifestDraftApplicationPlannerTest {
                         attributes = listOf(BinaryXmlAttribute(2, 3, 4, 0x03, 4)),
                         children = emptyList(),
                     ),
+                    *if (shared) arrayOf(
+                        BinaryXmlElement(
+                            namespaceIndex = -1,
+                            nameIndex = 5,
+                            attributes = listOf(BinaryXmlAttribute(2, 3, 4, 0x03, 4)),
+                            children = emptyList(),
+                        ),
+                    ) else emptyArray(),
                 ),
             ),
         ),
