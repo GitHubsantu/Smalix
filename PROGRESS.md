@@ -68,9 +68,10 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Design and approve the export boundary: an explicit user-selected destination, non-overwrite behavior, final SHA-256 binding, and no persisted keys/passwords. No signing UI is currently approved.
+Owner approval: implement `docs/V0_5_EXPORT_DESIGN.md`. The first slice must have no signing/export UI, no overwrite, and no persisted export history.
 
 ## Log
+- 2026-11-18: Added proposed `docs/V0_5_EXPORT_DESIGN.md`. It limits export to a SHA/size-bound copy of fully reinspected build-local `signed.apk` into an explicit external new `.apk` path. It requires a sibling temporary file, stream copy/hash verification, non-replacing atomic final move, post-move rehash, deadline/path containment checks, and no export-history persistence. No code, UI, library, export, or test was added/run in this design step.
 - Spec received and reviewed. Progress file created.
 - Renamed project to Smalix (package com.imdevops.smalix), chosen by owner. Earlier names ApkEditor/Dexora were not unique. Uniqueness of Smalix not yet checked (GitHub/domain).
 - Decision: target Windows desktop for speed (mobile later by reusing engines).
