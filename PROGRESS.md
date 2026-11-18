@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Prepare the v0.5 rebuild/signing design only; request approval before any output, resource-table application, rebuild, export, alignment, or signing code.
+Owner: review and approve `docs/V0_5_DESIGN.md` before any output, resource-table application, rebuild, export, alignment, or signing code.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -228,3 +228,4 @@ Prepare the v0.5 rebuild/signing design only; request approval before any output
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 10s** (`40 actionable tasks: 10 executed, 30 up-to-date`). Gradle reported deprecated-features warnings and one existing unchecked-cast test warning in `InShotHookFixtureIntegrationTest`; no test failures.
 - 2026-11-18: Added an explicit bounded `resources.arsc` parse deadline. It checks package/type traversal and every 1,024 type entries, returning typed `LimitExceeded` rather than continuing past the deadline. v0.4 is complete for its approved read-only/staged scope; no resource table or APK application exists.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryResourceTableReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 24s** (`11 actionable tasks: 4 executed, 7 up-to-date`). The reader suite includes the zero-deadline typed-limit test. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added proposed `docs/V0_5_DESIGN.md`. It defines isolated-copy build boundaries, validateâ†’applyâ†’alignâ†’signâ†’verifyâ†’export ordering, key/password restrictions, recovery/tests, and explicit unverified candidate tools. No dependency, feature code, build output, export, alignment, or signing action was added or run.
