@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **design and approve explicit export boundary**
+Status: **v0.5 complete** · Platform: **Windows desktop (decided)** · Next slice: **plan v1.0 integration/stabilization**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -10,7 +10,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
 | 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Complete (staged/read-only; no source DEX/APK replacement) |
 | 0.4 | Resource explorer/editor, validation | Complete (read-only explorer + SHA-bound staged literal drafts only; no resource-table/APK apply) |
-| 0.5 | Rebuild, align, sign, verify, export | In progress (isolated manifest apply, align, v1/v2/v3 sign/verify, and final reinspection complete; export remains deliberately outside the approved signing boundary) |
+| 0.5 | Rebuild, align, sign, verify, export | Complete (approved isolated manifest apply, align, v1/v2/v3 sign/verify/reinspection, and explicit non-overwrite export boundary; no build UI) |
 | 1.0 | Integration + stabilization | Not started |
 
 ## Platform decision
@@ -68,9 +68,11 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner approval: implement `docs/V0_5_EXPORT_DESIGN.md`. The first slice must have no signing/export UI, no overwrite, and no persisted export history.
+Plan and approve v1.0 integration/stabilization. The v0.5 build/sign/export engines remain UI-independent; build/sign/export UI and build-history persistence require separate design approval.
 
 ## Log
+- 2026-11-18: Completed the approved export boundary. Added `ExportedApk`/`ApkExportResult` and app-side `ApkExportUseCase`. It accepts only SHA/size-bound, fully reinspected build-local `signed.apk`, rejects workspace/existing/invalid/missing destinations, streams through a unique sibling temporary file, rehashes source and temporary output, atomically moves without overwrite, then rehashes the final file. It persists no history and adds no UI. Failed/cancelled operations remove only the owned temporary file.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 27s** (`40 actionable tasks: 8 executed, 32 up-to-date`). JUnit XML totals: **131 tests, 0 failures, 0 errors, 4 skipped**. Export tests cover successful source-preserving external export, no overwrite, workspace/stale/wrong-evidence/missing-parent/expired rejection, and cancellation temporary cleanup. Kotlin daemon marker access was denied and Gradle fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added proposed `docs/V0_5_EXPORT_DESIGN.md`. It limits export to a SHA/size-bound copy of fully reinspected build-local `signed.apk` into an explicit external new `.apk` path. It requires a sibling temporary file, stream copy/hash verification, non-replacing atomic final move, post-move rehash, deadline/path containment checks, and no export-history persistence. No code, UI, library, export, or test was added/run in this design step.
 - Spec received and reviewed. Progress file created.
 - Renamed project to Smalix (package com.imdevops.smalix), chosen by owner. Earlier names ApkEditor/Dexora were not unique. Uniqueness of Smalix not yet checked (GitHub/domain).

@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import java.time.Instant
+import java.nio.file.Path
 import java.util.UUID
 
 class SigningModelsTest {
@@ -26,6 +27,15 @@ class SigningModelsTest {
         }
         assertThrows(IllegalArgumentException::class.java) {
             profile(SigningKeyReferenceType.PKCS8_X509, "alias", null)
+        }
+    }
+
+    @Test fun `export evidence requires a SHA 256 digest and nonnegative size`() {
+        assertThrows(IllegalArgumentException::class.java) {
+            ExportedApk(Path.of("export.apk"), "bad", 1, Instant.EPOCH)
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            ExportedApk(Path.of("export.apk"), "a".repeat(64), -1, Instant.EPOCH)
         }
     }
 

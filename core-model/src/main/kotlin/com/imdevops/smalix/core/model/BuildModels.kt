@@ -42,3 +42,23 @@ sealed interface ZipAlignmentResult {
     data class Rejected(val message: String) : ZipAlignmentResult { init { require(message.isNotBlank()) } }
     data class Failed(val message: String) : ZipAlignmentResult { init { require(message.isNotBlank()) } }
 }
+
+/** Metadata-only evidence for a successfully copied final APK. */
+data class ExportedApk(
+    val destination: Path,
+    val sha256: String,
+    val sizeBytes: Long,
+    val exportedAt: Instant,
+) {
+    init {
+        require(sha256.matches(Regex("^[0-9A-Fa-f]{64}$")))
+        require(sizeBytes >= 0)
+    }
+}
+
+sealed interface ApkExportResult {
+    data class Exported(val apk: ExportedApk) : ApkExportResult
+    data class Rejected(val message: String) : ApkExportResult { init { require(message.isNotBlank()) } }
+    data class Failed(val message: String) : ApkExportResult { init { require(message.isNotBlank()) } }
+    data object Cancelled : ApkExportResult
+}

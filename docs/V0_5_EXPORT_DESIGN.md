@@ -1,6 +1,6 @@
 # v0.5 export boundary
 
-Status: proposed; implementation requires owner approval.
+Status: implemented and test-verified on 2026-11-18; no export UI or export-history persistence is included.
 
 ## Scope
 
@@ -43,3 +43,7 @@ No step modifies `original.apk`, `input.apk`, `manifest-applied.apk`, `aligned.a
 ## Library check
 
 No new library is proposed. Implementation uses JDK 17 `java.nio.file` plus streaming `MessageDigest`; no new license or compatibility claim is made.
+
+## Implementation note
+
+`ApkExportUseCase` is the UI-independent implementation. It accepts only the fixed `signed.apk` evidence, rehashes before and after a streamed sibling-temporary copy, requires a non-replacing atomic final move, and returns only destination metadata. It rejects workspace destinations and keeps no export record.
