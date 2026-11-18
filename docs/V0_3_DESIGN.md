@@ -51,3 +51,12 @@ The current descriptor-only reader cannot support this safely yet. First add bou
 Smali editing is staged text only under `work/dex/`; `original.apk` and source DEX remain immutable. The implemented storage slice atomically saves each per-method text draft as `work/dex/<draft-id>.smali`, verifies project/SHA binding on load, and never writes an APK, replaces DEX in an APK, exports, or signs.
 
 Each draft binds original APK SHA-256, DEX entry, class/method descriptor, revision, timestamps, and validation status. SQLite stores metadata/path only; staged Smali text stays in the workspace. The next slice must add a use case that rejects SHA/method/metadata mismatches before opening or saving a draft. Syntax/assembly validation, duplicate-target handling, and limits remain pending; `smali` needs separate license/JDK verification. Tests cover stale/malformed/cross-project storage input and unchanged original bytes. Rebuild stays deferred to v0.5.
+
+### Desktop staged-draft workflow (proposed)
+
+1. In the existing read-only DEX browser, the user selects a class method already present in the bounded index.
+2. “Open staged draft” runs the SHA-safe use case. It opens an existing matching draft or creates a text-only draft from the current read-only method rendering; stale/inconsistent state is shown as an error and is not overwritten.
+3. A clearly labelled staged-text pane permits only draft-text changes. “Save staged text” creates a new revision after local size/binding checks; it states that `original.apk` is unchanged.
+4. “Discard staged draft” requires confirmation and removes only the matching `work/dex/<draft-id>.smali` text and its SQLite metadata.
+
+This slice has no assemble, validate-with-smali, DEX replacement, APK rebuild, export, or signing control. Approval is required before desktop UI code.
