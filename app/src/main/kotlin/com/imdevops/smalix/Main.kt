@@ -247,7 +247,7 @@ private fun SmalixScreen() {
                     val found = resourceSearch.trim().takeIf(String::isNotBlank)?.let { DefaultResourceSearch().find(index, ResourceQuery.Text(it)) } ?: index.entries
                     InspectorSection("Resources (${found.size})", found.take(500).joinToString("\n") { "${it.qualifiedName}${if (it.configuration.isBlank()) "" else " [${it.configuration}]"} = ${it.value}" }.ifBlank { "No supported literal resources" } + if (found.size > 500) "\nShowing first 500 results." else "")
                     found.take(100).forEach { entry -> (entry.value as? ResourceValue.Literal)?.let { literal ->
-                        Button(enabled = !busy && selected?.originalSha256 != null, onClick = { val project = selected ?: return@Button; val proposed = ResourceDraft.from(project.id, project.originalSha256 ?: return@Button, entry) ?: return@Button; scope.launch { busy = true; when (val result = withContext(Dispatchers.IO) { resourceDrafts.openOrCreate(project.id, proposed, Instant.now().plusSeconds(120)) }) { is ResourceDraftSessionResult.Ready -> { resourceDraft = result.draft; resourceDraftValue = result.draft.proposedValue; status = "Staged resource draft opened. original.apk and resources.arsc are unchanged." }; else -> status = "Resource draft unavailable: $result" }; busy = false } }) { Text("Edit staged ${entry.qualifiedName}") }
+                        Button(enabled = !busy && selected?.originalSha256 != null, onClick = { val project = selected ?: return@Button; val sha = project.originalSha256 ?: return@Button; val proposed = ResourceDraft.from(project.id, sha, entry)?.copy(id = resourceDraftId(project.id, sha, entry.resourceId, entry.configuration)) ?: return@Button; scope.launch { busy = true; when (val result = withContext(Dispatchers.IO) { resourceDrafts.openOrCreate(project.id, proposed, Instant.now().plusSeconds(120)) }) { is ResourceDraftSessionResult.Ready -> { resourceDraft = result.draft; resourceDraftValue = result.draft.proposedValue; status = "Staged resource draft opened. original.apk and resources.arsc are unchanged." }; else -> status = "Resource draft unavailable: $result" }; busy = false } }) { Text("Edit staged ${entry.qualifiedName}") }
                     } }
                     resourceDraft?.let { current ->
                         OutlinedTextField(resourceDraftValue, { resourceDraftValue = it }, Modifier.fillMaxWidth(), label = { Text("Staged ${current.type.wireName} value") }, enabled = !busy)
@@ -436,6 +436,9 @@ private fun methodDraftText(method: DexMethod): String {
 
 private fun smaliDraftId(projectId: com.imdevops.smalix.core.model.ProjectId, clazz: DexClass, method: DexMethod): UUID =
     UUID.nameUUIDFromBytes("${projectId.value}|${clazz.dexEntryName}|${clazz.descriptor}|${method.name}${method.descriptor}".toByteArray())
+
+private fun resourceDraftId(projectId: com.imdevops.smalix.core.model.ProjectId, sha256: String, resourceId: Long, configuration: String): UUID =
+    UUID.nameUUIDFromBytes("${projectId.value}|${sha256.lowercase()}|$resourceId|$configuration".toByteArray())
 
 private const val ACC_NATIVE = 0x100
 private const val ACC_ABSTRACT = 0x400
