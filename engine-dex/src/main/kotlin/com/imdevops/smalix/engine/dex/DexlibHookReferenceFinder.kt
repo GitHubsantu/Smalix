@@ -26,7 +26,7 @@ class DexlibHookReferenceFinder(private val maxResults: Int = 10_000) : HookRefe
                 for (instruction in implementation.instructions) {
                     val reference = (instruction as? ReferenceInstruction)?.reference as? MethodReference
                     if (reference != null && reference.definingClass == target.classDescriptor && reference.name == target.methodName && reference.parameterTypes.joinToString(separator = "", prefix = "(", postfix = ")") == target.parameterDescriptor && reference.returnType == target.returnDescriptor) {
-                        results += HookReference(name, clazz.type, method.name, method.parameterTypes.joinToString(separator = "", prefix = "(", postfix = ")") + method.returnType, target, offset, instruction.opcode.name.endsWith("_RANGE"))
+                        results += HookReference(name, clazz.type, method.name, method.parameterTypes.joinToString(separator = "", prefix = "(", postfix = ")") + method.returnType, target, offset, instruction.opcode.name, instruction.opcode.name.endsWith("_RANGE"))
                         if (results.size >= maxResults) return InspectionResult.Success(results)
                     }
                     offset += instruction.codeUnits.toLong()

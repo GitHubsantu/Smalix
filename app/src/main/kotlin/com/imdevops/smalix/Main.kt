@@ -181,7 +181,7 @@ private fun SmalixScreen() {
                             }
                         }; busy = false
                     } }) { Text("Search invokes") }
-                    if (hookResults.isNotEmpty()) InspectorSection("Hook matches (${hookResults.size})", hookResults.joinToString("\n") { "${it.dexEntryName} ${it.callerClassDescriptor}->${it.callerMethodName}${it.callerMethodDescriptor} @${it.codeOffset}${if (it.rangeInvoke) " /range" else ""}" })
+                    if (hookResults.isNotEmpty()) InspectorSection("Hook matches (${hookResults.size})", hookResults.joinToString("\n") { "${it.opcodeName} | ${it.dexEntryName} | ${it.callerClassDescriptor}->${it.callerMethodName}${it.callerMethodDescriptor} @${it.codeOffset}" })
                 }
                 draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
                 draft?.let { current ->

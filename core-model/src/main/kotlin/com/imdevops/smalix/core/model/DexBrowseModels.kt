@@ -50,6 +50,6 @@ data class HookSignature(val classDescriptor: String, val methodName: String, va
     val methodDescriptor: String get() = parameterDescriptor + returnDescriptor
 }
 
-data class HookReference(val dexEntryName: String, val callerClassDescriptor: String, val callerMethodName: String, val callerMethodDescriptor: String, val target: HookSignature, val codeOffset: Long, val rangeInvoke: Boolean) {
+data class HookReference(val dexEntryName: String, val callerClassDescriptor: String, val callerMethodName: String, val callerMethodDescriptor: String, val target: HookSignature, val codeOffset: Long, val opcodeName: String, val rangeInvoke: Boolean) {
     init { require(codeOffset >= 0) }
 }
