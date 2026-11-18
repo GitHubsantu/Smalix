@@ -29,3 +29,16 @@ data class BuildWorkspace(
     val root: Path,
     val inputApk: Path,
 )
+
+/** Requests alignment of an already validated build-local APK into a distinct path. */
+data class ZipAlignmentRequest(
+    val input: ValidatedApk,
+    val outputPath: Path,
+    val deadline: Instant,
+)
+
+sealed interface ZipAlignmentResult {
+    data class Created(val alignedApk: Path) : ZipAlignmentResult
+    data class Rejected(val message: String) : ZipAlignmentResult { init { require(message.isNotBlank()) } }
+    data class Failed(val message: String) : ZipAlignmentResult { init { require(message.isNotBlank()) } }
+}

@@ -18,7 +18,7 @@ Use an in-house, lossless binary-AXML document layer for manifest drafts. Do not
 
 1. Add a bounded, UI-independent `BinaryXmlDocumentReader` that validates and retains the full binary XML structure. Test no-op byte preservation and malformed bounds.
 2. Add a `ManifestDraftApplier` that returns an in-memory replacement manifest only. Start with literal label/version/SDK/permission changes; unsupported activity structural changes return a typed rejection.
-3. Independently test isolated ZIP entry replacement, then re-run ZIP, manifest, and DEX inspection. Carry only that fixed build-local output's analyzer SHA-256/size plus its manifest and DEX evidence forward in memory. Any later byte-changing stage must reinspect its own output again.
+3. Independently test isolated ZIP entry replacement, then re-run ZIP, manifest, and DEX inspection. Carry only that fixed build-local output's analyzer SHA-256/size plus its manifest and DEX evidence forward in memory. ZIP alignment consumes this evidence, writes only `aligned.apk`, and reinspects that output; any later byte-changing stage must do the same.
 
 ## Fixtures
 
