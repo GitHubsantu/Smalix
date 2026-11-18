@@ -14,7 +14,7 @@ import java.nio.ByteOrder
 import java.util.zip.ZipFile
 
 /** Bounded reader for default-config literal string, color, and dimen resources only. */
-class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, private val maxEntries: Int = 100_000) : ResourceReader {
+class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, private val maxEntries: Int = 100_000, private val maxParseMillis: Long = 5_000) : ResourceReader {
     override suspend fun index(apk: ValidatedApk): InspectionResult<ResourceIndex> {
         try {
         if (apk.entries.none { it.normalizedPath == TABLE }) return InspectionResult.Failure(AnalysisFailure.MalformedApk("APK is missing resources.arsc."))
@@ -34,34 +34,38 @@ class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, pr
             }
             InspectionResult.Success(ResourceIndex(parse(bytes)))
         }
+        } catch (_: ParseDeadlineExceeded) { return InspectionResult.Failure(AnalysisFailure.LimitExceeded("resource table parse time", "resources.arsc parsing exceeded $maxParseMillis ms."))
         } catch (e: IllegalArgumentException) { return InspectionResult.Failure(AnalysisFailure.MalformedApk(e.message ?: "Malformed resources.arsc."))
         } catch (e: IndexOutOfBoundsException) { return InspectionResult.Failure(AnalysisFailure.MalformedApk("Malformed resources.arsc bounds."))
         } catch (e: Exception) { return InspectionResult.Failure(AnalysisFailure.IoFailure("Unable to read resources.arsc: ${e.message ?: "I/O error"}")) }
     }
 
     private fun parse(bytes: ByteArray): List<ResourceEntry> {
+        require(maxParseMillis >= 0) { "Resource parse deadline is malformed." }
+        val deadline = System.nanoTime() + maxParseMillis * 1_000_000
         val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val root = chunk(b, 0, bytes.size); require(root.type == TABLE_TYPE && root.header >= 12) { "Invalid resource table header." }
         val global = stringPool(b, root.header, root.end)
         val result = mutableListOf<ResourceEntry>(); var p = root.header + chunk(b, root.header, root.end).size
         while (p < root.end) {
+            checkDeadline(deadline)
             val c = chunk(b, p, root.end)
-            if (c.type == PACKAGE_TYPE) parsePackage(b, c, global, result)
+            if (c.type == PACKAGE_TYPE) parsePackage(b, c, global, result, deadline)
             p = c.end
         }
         return result
     }
 
-    private fun parsePackage(b: ByteBuffer, pkg: Chunk, global: List<String>, out: MutableList<ResourceEntry>) {
+    private fun parsePackage(b: ByteBuffer, pkg: Chunk, global: List<String>, out: MutableList<ResourceEntry>, deadline: Long) {
         require(pkg.header >= 284) { "Malformed resource package." }
         val id = i32(b, pkg.start + 8); val packageName = utf16Fixed(b, pkg.start + 12, 256).ifBlank { "package$id" }
         val typePool = stringPool(b, pkg.start + i32(b, pkg.start + 268), pkg.end)
         val keyPool = stringPool(b, pkg.start + i32(b, pkg.start + 276), pkg.end)
         var p = pkg.start + pkg.header
-        while (p < pkg.end) { val c = chunk(b, p, pkg.end); if (c.type == TYPE_TYPE) parseType(b, c, id, packageName, typePool, keyPool, global, out); p = c.end }
+        while (p < pkg.end) { checkDeadline(deadline); val c = chunk(b, p, pkg.end); if (c.type == TYPE_TYPE) parseType(b, c, id, packageName, typePool, keyPool, global, out, deadline); p = c.end }
     }
 
-    private fun parseType(b: ByteBuffer, c: Chunk, pkgId: Int, pkgName: String, types: List<String>, keys: List<String>, global: List<String>, out: MutableList<ResourceEntry>) {
+    private fun parseType(b: ByteBuffer, c: Chunk, pkgId: Int, pkgName: String, types: List<String>, keys: List<String>, global: List<String>, out: MutableList<ResourceEntry>, deadline: Long) {
         require(c.header >= 28) { "Malformed resource type." }; val typeId = u8(b, c.start + 8); val count = i32(b, c.start + 12)
         require(count in 0..maxEntries && c.start + c.header <= c.end) { "Resource entry limit exceeded." }
         val configSize = i32(b, c.start + 20); require(configSize in 4..(c.header - 20)) { "Malformed resource configuration." }
@@ -69,6 +73,7 @@ class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, pr
         val type = when (types.getOrNull(typeId - 1)) { "string" -> ResourceType.STRING; "color" -> ResourceType.COLOR; "dimen" -> ResourceType.DIMEN; else -> return }
         val entriesStart = c.start + i32(b, c.start + 16)
         repeat(count) { index ->
+            if (index and 0x3ff == 0) checkDeadline(deadline)
             val offset = i32(b, c.start + c.header + index * 4); if (offset == -1) return@repeat
             val e = entriesStart + offset; require(e + 16 <= c.end) { "Malformed resource entry." }; if (u16(b, e + 2) != 0) return@repeat
             val key = keys.getOrNull(i32(b, e + 4)) ?: return@repeat
@@ -139,9 +144,11 @@ class BinaryResourceTableReader(private val maxBytes: Int = 32 * 1024 * 1024, pr
             (((first and 0x7fff) shl 16) or u16(b, p + 2)) to 4
         }
     }
+    private fun checkDeadline(deadline: Long) { if (System.nanoTime() > deadline) throw ParseDeadlineExceeded() }
     private fun utf16Fixed(b: ByteBuffer, p: Int, bytes: Int): String = buildString { for (i in 0 until bytes step 2) { val c=u16(b,p+i); if(c==0) break; append(c.toChar()) } }
     private fun chunk(b: ByteBuffer, start: Int, end: Int): Chunk { require(start >= 0 && start+8 <= end); val h=u16(b,start+2); val s=i32(b,start+4); require(h>=8 && s>=h && start+s<=end); return Chunk(u16(b,start),h,s,start,start+s) }
     private fun u8(b: ByteBuffer,p:Int)=b.get(p).toInt() and 0xff; private fun u16(b: ByteBuffer,p:Int)=b.getShort(p).toInt() and 0xffff; private fun i32(b: ByteBuffer,p:Int)=b.getInt(p)
     private data class Chunk(val type:Int,val header:Int,val size:Int,val start:Int,val end:Int)
+    private class ParseDeadlineExceeded : RuntimeException()
     private companion object { const val TABLE="resources.arsc"; const val STRING_POOL=1; const val TABLE_TYPE=2; const val PACKAGE_TYPE=0x200; const val TYPE_TYPE=0x201 }
 }

@@ -1,6 +1,6 @@
 # v0.4 design — staged resources
 
-Status: in progress. Read-only index/reader/explorer and staged-draft lifecycle are implemented; an explicit bounded parser deadline remains before milestone completion.
+Status: complete for the approved staged/read-only scope. Resource-table/APK application, rebuild, export, alignment, and signing remain deferred to v0.5.
 
 ## Boundary
 

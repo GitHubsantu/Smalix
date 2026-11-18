@@ -9,7 +9,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | 0.1 | Import, ZIP validation, SHA-256, metadata, binary manifest parse, activities/permissions view, DEX/multidex detect, file explorer, projects, tests | Complete |
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
 | 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Complete (staged/read-only; no source DEX/APK replacement) |
-| 0.4 | Resource explorer/editor, validation | In progress (read-only explorer implemented; staged resource drafts pending) |
+| 0.4 | Resource explorer/editor, validation | Complete (read-only explorer + SHA-bound staged literal drafts only; no resource-table/APK apply) |
 | 0.5 | Rebuild, align, sign, verify, export | Not started |
 | 1.0 | Integration + stabilization | Not started |
 
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement and test an explicit bounded `resources.arsc` parse deadline. Then reassess v0.4 milestone readiness. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Prepare the v0.5 rebuild/signing design only; request approval before any output, resource-table application, rebuild, export, alignment, or signing code.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -226,3 +226,5 @@ Implement and test an explicit bounded `resources.arsc` parse deadline. Then rea
 - Test log (2026-11-18): `:engine-manifest:test --tests '*BinaryResourceTableReaderTest' --no-daemon --console=plain` regenerated `BinaryResourceTableReaderTest`: 5 tests, 0 failures/errors. The terminal wrapper did not capture Gradle completion text, so no `BUILD SUCCESSFUL` claim is made from this run.
 - 2026-11-18: v0.4 review confirms the read-only explorer and SHA-bound staged literal-draft lifecycle are implemented and manually verified. The approved explicit resource-table parse deadline is still missing, so v0.4 remains in progress; no resource table/APK application is authorized.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 10s** (`40 actionable tasks: 10 executed, 30 up-to-date`). Gradle reported deprecated-features warnings and one existing unchecked-cast test warning in `InShotHookFixtureIntegrationTest`; no test failures.
+- 2026-11-18: Added an explicit bounded `resources.arsc` parse deadline. It checks package/type traversal and every 1,024 type entries, returning typed `LimitExceeded` rather than continuing past the deadline. v0.4 is complete for its approved read-only/staged scope; no resource table or APK application exists.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryResourceTableReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 24s** (`11 actionable tasks: 4 executed, 7 up-to-date`). The reader suite includes the zero-deadline typed-limit test. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.

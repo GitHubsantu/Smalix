@@ -52,6 +52,11 @@ class BinaryResourceTableReaderTest {
         assertTrue((result as InspectionResult.Failure).error is AnalysisFailure.MalformedApk)
     }
 
+    @Test fun `enforces the resource table parse deadline`() = runBlocking {
+        val result = read(resourceTable(listOf("value")), BinaryResourceTableReader(maxParseMillis = 0))
+        assertTrue((result as InspectionResult.Failure).error is AnalysisFailure.LimitExceeded)
+    }
+
     private suspend fun index(table: ByteArray) = (read(table, BinaryResourceTableReader()) as InspectionResult.Success).value.entries
 
     private suspend fun read(table: ByteArray, reader: BinaryResourceTableReader): InspectionResult<com.imdevops.smalix.core.model.ResourceIndex> = run {
