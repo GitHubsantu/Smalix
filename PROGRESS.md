@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Extend the read-only binary-AXML reader from validated chunk indexing to a semantic lossless document tree before any in-memory manifest draft applier; no APK or ZIP replacement is authorized yet.
+Add bounded string-pool decoding and name resolution to the read-only binary-AXML tree before any in-memory manifest draft applier; no APK or ZIP replacement is authorized yet.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -246,3 +246,5 @@ Extend the read-only binary-AXML reader from validated chunk indexing to a seman
 - 2026-11-18: Added proposed `docs/V0_5_MANIFEST_APPLICATION_DESIGN.md`. It selects a lossless in-house binary-AXML document layer after the Apktool failure, limits the first application scope to staged manifest literals/permissions, and requires typed rejection rather than data loss. No source code, manifest replacement, APK mutation, output, export, alignment, or signing was added.
 - 2026-11-18: Implemented the first approved in-house AXML slice: `BinaryXmlDocumentReader` is a bounded, read-only reader that defensively retains original manifest bytes and a validated index of every binary XML chunk, including unknown chunks. It returns typed malformed/limit failures and has no semantic edit, manifest replacement, ZIP, APK, output, export, alignment, or signing behavior.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*BinaryXmlDocumentReaderTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m** (`11 actionable tasks: 2 executed, 9 up-to-date`). The portable suite covers unknown-chunk indexing, defensive no-op byte preservation, malformed bounds, and the byte limit. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Extended `BinaryXmlDocumentReader` with an immutable nested element/attribute tree retaining namespace/name/raw-value string-pool indexes and Android typed value data. End tags are balanced and matched; unknown chunks and defensive original bytes remain retained. It remains read-only and has no string resolution, draft application, manifest replacement, ZIP/APK write, output, export, alignment, or signing behavior.
+- Test log (2026-11-18): `BinaryXmlDocumentReaderTest` JUnit XML records **4 tests, 0 skipped, 0 failures, 0 errors** after the semantic-tree addition. The terminal wrapper did not retain a final Gradle completion line for this rerun, so no new `BUILD SUCCESSFUL` claim is made from it.
