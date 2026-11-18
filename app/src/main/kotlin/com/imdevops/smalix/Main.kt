@@ -90,6 +90,7 @@ private fun SmalixScreen() {
     var selectedDexClass by remember { mutableStateOf<DexClass?>(null) }
     var selectedDexMethod by remember { mutableStateOf<DexMethod?>(null) }
     var smaliDraft by remember { mutableStateOf<SmaliDraft?>(null) }
+    var smaliDraftText by remember { mutableStateOf("") }
     var smaliDiscardConfirmation by remember { mutableStateOf(false) }
     var hookClass by remember { mutableStateOf("Lcom/Epic/custom/dialog/Customdialog;") }
     var hookMethod by remember { mutableStateOf("zenx") }
@@ -179,14 +180,14 @@ private fun SmalixScreen() {
                     InspectorSection("DEX classes (${found.size})", "Read-only index. Select a class, then a method to open a staged text draft.")
                     LazyColumn(Modifier.fillMaxWidth().height(180.dp)) {
                         items(found.take(500), key = DexClass::descriptor) { clazz ->
-                            Button(enabled = !busy, onClick = { selectedDexClass = clazz; selectedDexMethod = null; smaliDraft = null }, modifier = Modifier.fillMaxWidth()) { Text(clazz.descriptor) }
+                            Button(enabled = !busy, onClick = { selectedDexClass = clazz; selectedDexMethod = null; smaliDraft = null; smaliDraftText = "" }, modifier = Modifier.fillMaxWidth()) { Text(clazz.descriptor) }
                         }
                     }
                     selectedDexClass?.let { clazz ->
                         InspectorSection("Selected DEX class", "${clazz.dexEntryName}: ${clazz.descriptor}")
                         LazyColumn(Modifier.fillMaxWidth().height(160.dp)) {
                             items(clazz.methods, key = { it.name + it.descriptor }) { method ->
-                                Button(enabled = !busy, onClick = { selectedDexMethod = method; smaliDraft = null }, modifier = Modifier.fillMaxWidth()) { Text("${method.name}${method.descriptor}") }
+                                Button(enabled = !busy, onClick = { selectedDexMethod = method; smaliDraft = null; smaliDraftText = "" }, modifier = Modifier.fillMaxWidth()) { Text("${method.name}${method.descriptor}") }
                             }
                         }
                     }
@@ -197,7 +198,7 @@ private fun SmalixScreen() {
                             busy = true; status = "Opening staged Smali draft..."
                             val proposed = SmaliDraft(smaliDraftId(project.id, selectedClass, selectedMethod), project.id, project.originalSha256 ?: "", selectedClass.dexEntryName, selectedClass.descriptor, selectedMethod.name, selectedMethod.descriptor, 0, methodDraftText(selectedMethod))
                             when (val result = withContext(Dispatchers.IO) { smaliDrafts.openOrCreate(project.id, proposed, Instant.now().plusSeconds(120)) }) {
-                                is SmaliDraftSessionResult.Ready -> { smaliDraft = result.draft; status = "Staged Smali text opened. original.apk is unchanged." }
+                                is SmaliDraftSessionResult.Ready -> { smaliDraft = result.draft; smaliDraftText = result.draft.text; status = "Staged Smali text opened. original.apk is unchanged." }
                                 SmaliDraftSessionResult.ProjectNotFound -> status = "Project no longer exists."
                                 SmaliDraftSessionResult.ProjectNotReady -> status = "Inspect successfully before opening a staged Smali draft."
                                 is SmaliDraftSessionResult.WorkspaceUnavailable -> status = "Workspace unavailable: ${result.message}"
@@ -208,6 +209,15 @@ private fun SmalixScreen() {
                     }
                     smaliDraft?.let { current ->
                         InspectorSection("Staged Smali draft", "${current.dexEntryName}: ${current.classDescriptor}->${current.methodName}${current.methodDescriptor}\nRevision ${current.revision}. Text-only staged data; original.apk is unchanged.")
+                        OutlinedTextField(smaliDraftText, { smaliDraftText = it }, Modifier.fillMaxWidth().height(220.dp), label = { Text("Staged Smali text (not assembled)") }, enabled = !busy)
+                        Button(enabled = !busy, onClick = { scope.launch {
+                            busy = true; status = "Saving staged Smali text..."
+                            when (val result = withContext(Dispatchers.IO) { smaliDrafts.saveText(current.projectId, current.id, smaliDraftText, Instant.now().plusSeconds(120)) }) {
+                                is SmaliDraftSaveResult.Saved -> { smaliDraft = result.draft; smaliDraftText = result.draft.text; status = "Staged Smali text saved. original.apk is unchanged." }
+                                is SmaliDraftSaveResult.Rejected -> status = "Staged Smali text was not saved: ${result.validation.messages.joinToString()}"
+                                is SmaliDraftSaveResult.Unavailable -> status = "Staged Smali draft unavailable: ${result.result}"
+                            }; busy = false
+                        } }) { Text("Save staged Smali text") }
                         Button(enabled = !busy, onClick = { smaliDiscardConfirmation = true }) { Text("Discard staged Smali draft...") }
                     }
                 }
@@ -291,7 +301,7 @@ private fun SmalixScreen() {
         onDismissRequest = { smaliDiscardConfirmation = false },
         title = { Text("Discard staged Smali draft?") },
         text = { Text("Only the matching work/dex text draft and its metadata will be deleted. original.apk is unchanged.") },
-        confirmButton = { Button(onClick = { val current = smaliDraft!!; scope.launch { busy = true; smaliDiscardConfirmation = false; when (withContext(Dispatchers.IO) { smaliDrafts.discard(current.projectId, current.id) }) { is SmaliDraftSessionResult.Ready -> { smaliDraft = null; status = "Staged Smali draft discarded. original.apk is unchanged." }; else -> status = "Staged Smali draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
+        confirmButton = { Button(onClick = { val current = smaliDraft!!; scope.launch { busy = true; smaliDiscardConfirmation = false; when (withContext(Dispatchers.IO) { smaliDrafts.discard(current.projectId, current.id) }) { is SmaliDraftSessionResult.Ready -> { smaliDraft = null; smaliDraftText = ""; status = "Staged Smali draft discarded. original.apk is unchanged." }; else -> status = "Staged Smali draft could not be discarded." }; busy = false } }) { Text("Discard draft") } },
         dismissButton = { Button(onClick = { smaliDiscardConfirmation = false }) { Text("Cancel") } },
     )
     if (removalConfirmation && draft != null) AlertDialog(

@@ -52,12 +52,25 @@ class SmaliDraftUseCaseTest {
         assertEquals(SmaliDraftSessionResult.StaleDraft("Original APK SHA-256 changed; re-inspect before opening a Smali draft."), changed)
     }
 
+    @Test fun `saves a new revision and preserves old text when validation rejects it`() = runBlocking {
+        val project = project(); val texts = Texts(); val metadata = Metadata(); val useCase = useCase(project, texts, metadata)
+        val initial = draft(project.id)
+        useCase.openOrCreate(project.id, initial, Instant.MAX)
+
+        val saved = useCase.saveText(project.id, initial.id, ".method public m()V\n.end method", Instant.MAX) as SmaliDraftSaveResult.Saved
+        assertEquals(1, saved.draft.revision)
+        assertEquals(saved.draft, texts.value)
+        val rejected = useCase.saveText(project.id, initial.id, "bad", Instant.MAX) as SmaliDraftSaveResult.Rejected
+        assertEquals(false, rejected.validation.isValid)
+        assertEquals(saved.draft, texts.value)
+    }
+
     private fun useCase(project: Project, texts: Texts, metadata: Metadata, sha: String = "a".repeat(64)) = SmaliDraftUseCase(
         projects = object : ProjectRepository { override suspend fun create(project: Project) = Unit; override suspend fun find(projectId: ProjectId) = project.takeIf { it.id == projectId }; override suspend fun list() = listOf(project); override suspend fun update(project: Project) = Unit; override suspend fun delete(projectId: ProjectId) = Unit },
         workspaces = object : WorkspaceStore { val workspace = Workspace(project.id, Path.of("p"), Path.of("p/original.apk"), Path.of("p/work"), Path.of("p/logs")); override suspend fun create(projectId: ProjectId) = error("unused"); override suspend fun open(projectId: ProjectId) = workspace; override suspend fun copyOriginal(sourceApk: Path, workspace: Workspace) = Unit; override fun originalApk(workspace: Workspace) = workspace.originalApk; override suspend fun delete(workspace: Workspace) = Unit },
         drafts = texts, metadata = metadata,
         inspection = InspectionUseCase(object : ApkAnalyzer { override suspend fun analyze(request: AnalysisRequest) = InspectionResult.Success(ApkAnalysis(ValidatedApk(Path.of("p/original.apk"), sha, 1, emptyList()), emptySet(), emptyList())) }, object : ManifestParser { override suspend fun parse(apk: ValidatedApk) = InspectionResult.Success(ManifestInfo("p", null, null, null, null, null, emptyList(), emptyList())) }, object : DexDetector { override suspend fun detect(apk: ValidatedApk) = InspectionResult.Success(DexInfo(emptyList())) }),
-        validator = object : SmaliDraftValidator { override fun validate(draft: SmaliDraft) = SmaliValidation(emptyList()) }, now = { Instant.EPOCH },
+        validator = object : SmaliDraftValidator { override fun validate(draft: SmaliDraft) = if (draft.text == "bad") SmaliValidation(listOf("invalid")) else SmaliValidation(emptyList()) }, now = { Instant.EPOCH },
     )
 
     private fun project() = Project(ProjectId.random(), "P", Instant.EPOCH, null, RelativePath.of("projects/p"), RelativePath.of("projects/p/original.apk"), "a".repeat(64), "p.apk", 1, ProjectAnalysisStatus.ANALYZED, null)

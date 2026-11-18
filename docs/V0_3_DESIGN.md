@@ -56,10 +56,10 @@ Each draft binds original APK SHA-256, DEX entry, class/method descriptor, revis
 
 1. In the existing read-only DEX browser, the user selects a class method already present in the bounded index. **Implemented; manual desktop verification pending.**
 2. “Open staged draft” runs the SHA-safe use case. It opens an existing matching draft or creates a text-only metadata rendering; stale/inconsistent state is shown as an error and is not overwritten. **Implemented; manual desktop verification pending.**
-3. A clearly labelled staged-text pane permits only draft-text changes. “Save staged text” creates a new revision after local size/binding checks; it states that `original.apk` is unchanged. **Deferred pending separate approval.**
+3. A clearly labelled staged-text pane permits only draft-text changes. “Save staged text” creates a new revision after local size/binding checks; it states that `original.apk` is unchanged. **Implemented; manual desktop verification pending.**
 4. “Discard staged draft” requires confirmation and removes only the matching `work/dex/<draft-id>.smali` text and its SQLite metadata. **Implemented; manual desktop verification pending.**
 
-This slice has no assemble, validate-with-smali, DEX replacement, APK rebuild, export, or signing control. Approval is required before desktop UI code.
+This slice has no assemble, validate-with-smali, DEX replacement, APK rebuild, export, or signing control.
 
 ### Staged text editing increment (proposed)
 

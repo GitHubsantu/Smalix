@@ -29,6 +29,12 @@ sealed interface SmaliDraftSessionResult {
     data class StaleDraft(val message: String) : SmaliDraftSessionResult
 }
 
+sealed interface SmaliDraftSaveResult {
+    data class Saved(val draft: SmaliDraft, val validation: SmaliValidation) : SmaliDraftSaveResult
+    data class Rejected(val validation: SmaliValidation) : SmaliDraftSaveResult
+    data class Unavailable(val result: SmaliDraftSessionResult) : SmaliDraftSaveResult
+}
+
 /** Coordinates staged Smali text only. It never writes DEX entries or an APK. */
 class SmaliDraftUseCase(
     private val projects: ProjectRepository,
@@ -76,6 +82,36 @@ class SmaliDraftUseCase(
         drafts.discard(workspace, ready.draft.id)
         metadata.deleteSmaliDraft(ready.draft.id)
         return ready
+    }
+
+    suspend fun saveText(
+        projectId: ProjectId,
+        draftId: UUID,
+        text: String,
+        deadline: Instant,
+        limits: ZipSafetyLimits = ZipSafetyLimits(),
+    ): SmaliDraftSaveResult {
+        val project = projects.find(projectId) ?: return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.ProjectNotFound)
+        val sha = project.originalSha256 ?: return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.ProjectNotReady)
+        if (project.analysisStatus != ProjectAnalysisStatus.ANALYZED) return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.ProjectNotReady)
+        val workspace = openWorkspace(projectId) ?: return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.WorkspaceUnavailable("Project workspace is unavailable."))
+        when (val result = inspection.inspect(AnalysisRequest(projectId, workspaces.originalApk(workspace), deadline, limits))) {
+            is InspectionResult.Failure -> return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.InspectionFailed(result.error))
+            is InspectionResult.Success -> if (!result.value.apk.archive.sha256.equals(sha, ignoreCase = true)) {
+                return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.StaleDraft("Original APK SHA-256 changed; re-inspect before saving a Smali draft."))
+            }
+        }
+        val current = openExisting(projectId, workspace, sha, draftId)
+            ?: return SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.StaleDraft("No matching staged Smali draft exists."))
+        val revised = current.draft.copy(revision = current.draft.revision + 1, text = text)
+        val validation = validator.validate(revised)
+        if (!validation.isValid) return SmaliDraftSaveResult.Rejected(validation)
+        return try {
+            save(workspace, revised)
+            SmaliDraftSaveResult.Saved(revised, validation)
+        } catch (error: Exception) {
+            SmaliDraftSaveResult.Unavailable(SmaliDraftSessionResult.StaleDraft("Staged text was saved but metadata could not be reconciled: ${error.message ?: "unknown error"}"))
+        }
     }
 
     private suspend fun openExisting(projectId: ProjectId, workspace: Workspace, sha: String, draftId: UUID): SmaliDraftSessionResult.Ready? {
