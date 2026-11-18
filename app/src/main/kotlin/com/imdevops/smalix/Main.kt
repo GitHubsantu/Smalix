@@ -85,6 +85,7 @@ private fun SmalixScreen() {
     var hookParams by remember { mutableStateOf("(Landroid/app/Activity;)") }
     var hookReturn by remember { mutableStateOf("V") }
     var hookResults by remember { mutableStateOf(emptyList<com.imdevops.smalix.core.model.HookReference>()) }
+    var hookHistory by remember { mutableStateOf(emptyList<HookSignature>()) }
     var draft by remember { mutableStateOf<ManifestDraft?>(null) }
     var draftLabel by remember { mutableStateOf("") }
     var draftVersionName by remember { mutableStateOf("") }
@@ -176,12 +177,13 @@ private fun SmalixScreen() {
                         busy = true
                         runCatching { HookSignature(hookClass, hookMethod, hookParams, hookReturn) }.onFailure { status = "Invalid hook signature: ${it.message}" }.onSuccess { target ->
                             when (val result = withContext(Dispatchers.IO) { DexlibHookReferenceFinder().find(currentSummary.apk.archive, target) }) {
-                                is InspectionResult.Success -> { hookResults = result.value; status = "Read-only hook search found ${result.value.size} match(es)." }
+                                is InspectionResult.Success -> { hookResults = result.value; hookHistory = (listOf(target) + hookHistory.filterNot { it == target }).take(10); status = "Read-only hook search found ${result.value.size} match(es)." }
                                 is InspectionResult.Failure -> status = "Hook search failed: ${result.error}"
                             }
                         }; busy = false
                     } }) { Text("Search invokes") }
                     if (hookResults.isNotEmpty()) InspectorSection("Hook matches (${hookResults.size})", hookResults.joinToString("\n") { "${it.opcodeName} | ${it.dexEntryName} | ${it.callerClassDescriptor}->${it.callerMethodName}${it.callerMethodDescriptor} @${it.codeOffset}" })
+                    if (hookHistory.isNotEmpty()) InspectorSection("Hook search history (session only)", hookHistory.joinToString("\n") { "${it.classDescriptor}->${it.methodName}${it.methodDescriptor}" })
                 }
                 draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
                 draft?.let { current ->
