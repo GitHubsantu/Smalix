@@ -45,3 +45,9 @@ Use a small single-DEX APK, owned multidex APK, compact DEX with invalid offsets
 Input is an explicit signature: target class descriptor, method name, parameter descriptor list, and return descriptor; package-prefix queries are allowed only when clearly marked as a broad search. The reader scans bounded method instruction streams for `invoke-*` and `invoke-*/range`, returning only caller class/method, target signature, DEX entry, and code offset. Results are informational: no automatic risk label, deletion, patch, or export.
 
 The current descriptor-only reader cannot support this safely yet. First add bounded method/proto/code-item parsing with malformed-offset tests, then add the query engine and generated normal/range-invoke fixtures. Each scan checks byte/instruction/result limits and cancellation/deadline. Approval is required before this code.
+
+## Smali staged-edit increment (proposed)
+
+Smali editing is staged text only under `work/dex/`; `original.apk` and source DEX remain immutable. The first slice creates an explicit per-method draft, validates syntax/assembly in an isolated temporary directory, and never writes an APK, replaces DEX in an APK, exports, or signs.
+
+Each draft binds original APK SHA-256, DEX entry, class/method descriptor, revision, timestamps, and validation status. SQLite stores metadata/path only; staged Smali text stays in the workspace. SHA mismatch, missing method, malformed Smali, duplicate draft target, limits, or assembly failure produce errors. `smali` needs separate license/JDK verification. Test stale SHA, invalid Smali, cleanup, limits, and unchanged original SHA-256. Rebuild stays deferred to v0.5.

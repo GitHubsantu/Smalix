@@ -4,6 +4,8 @@ import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.ProjectId
 import com.imdevops.smalix.core.model.ManifestDraft
 import com.imdevops.smalix.core.model.ManifestDraftMetadata
+import com.imdevops.smalix.core.model.SmaliDraft
+import com.imdevops.smalix.core.model.SmaliValidation
 import com.imdevops.smalix.core.model.Workspace
 import java.nio.file.Path
 
@@ -47,3 +49,5 @@ interface ManifestDraftRepository {
     suspend fun save(metadata: ManifestDraftMetadata)
     suspend fun deleteManifestDraft(projectId: ProjectId)
 }
+
+interface SmaliDraftValidator { fun validate(draft: SmaliDraft): SmaliValidation }
