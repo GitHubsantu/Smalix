@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Add a build preflight/use case that verifies the project SHA and creates an isolated input copy only; no draft application, export, alignment, signing, or tool dependency.
+Add automated preflight coverage, then design/verify the first draft-application toolchain before any APK mutation, export, alignment, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -233,3 +233,5 @@ Add a build preflight/use case that verifies the project SHA and creates an isol
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 53s** (`8 actionable tasks: 2 executed, 6 up-to-date`). The first attempt exposed a missing coroutines test dependency in `engine-api`; corrected to Kotlin standard coroutine support before this successful rerun. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Implemented `FileSystemBuildWorkspaceStore` only. It creates a unique store-owned `work/builds/<id>/input.apk` copy through a temporary file and refuses to reuse a build ID; it does not apply drafts, export, align, sign, or modify `original.apk`.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-storage:test --tests '*FileSystemBuildWorkspaceStoreTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 27s** (`9 actionable tasks: 7 executed, 2 up-to-date`). Tests verify byte-identical isolated input and unchanged original bytes plus build-ID reuse rejection. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added `BuildPreflightUseCase` and `BuildWorkspaceStore` contract. Preflight requires an analyzed project/request SHA match, re-inspects immutable original bytes, and only then creates the isolated input copy. It applies no drafts and produces no export/signature. The initial compile attempt failed due to a Kotlin override default-parameter rule; corrected before the successful rerun.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 25s** (`19 actionable tasks: 3 executed, 16 up-to-date`). Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.

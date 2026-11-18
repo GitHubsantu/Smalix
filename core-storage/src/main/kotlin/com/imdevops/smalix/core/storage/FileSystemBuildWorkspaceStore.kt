@@ -2,6 +2,7 @@ package com.imdevops.smalix.core.storage
 
 import com.imdevops.smalix.core.model.BuildWorkspace
 import com.imdevops.smalix.core.model.Workspace
+import com.imdevops.smalix.engine.api.BuildWorkspaceStore
 import java.nio.file.AtomicMoveNotSupportedException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption.ATOMIC_MOVE
@@ -9,8 +10,10 @@ import java.nio.file.StandardCopyOption.REPLACE_EXISTING
 import java.util.UUID
 
 /** Creates a fresh build-local copy; it never changes Workspace.originalApk. */
-class FileSystemBuildWorkspaceStore(private val workspaceStore: FileSystemWorkspaceStore) {
-    suspend fun create(workspace: Workspace, buildId: UUID = UUID.randomUUID()): BuildWorkspace {
+class FileSystemBuildWorkspaceStore(private val workspaceStore: FileSystemWorkspaceStore) : BuildWorkspaceStore {
+    suspend fun create(workspace: Workspace): BuildWorkspace = create(workspace, UUID.randomUUID())
+
+    override suspend fun create(workspace: Workspace, buildId: UUID): BuildWorkspace {
         workspaceStore.originalApk(workspace)
         require(Files.isRegularFile(workspace.originalApk)) { "Workspace original APK is missing." }
         val builds = workspace.workDirectory.resolve("builds").normalize()
