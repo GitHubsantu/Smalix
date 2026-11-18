@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **bounded isolated ZIP replacement service**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **replacement-output reinspection**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement a bounded production isolated-manifest ZIP replacement service scoped to a store-owned build input/output, then re-inspect its output; never modify `original.apk`, workspace drafts, or exports.
+Re-inspect the isolated manifest-replacement output with ZIP and manifest engines before it can proceed in any build workflow; never modify `original.apk`, workspace drafts, or exports.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -258,3 +258,5 @@ Implement a bounded production isolated-manifest ZIP replacement service scoped 
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*InMemoryManifestDraftApplierTest' --tests '*ManifestDraftApplicationPlannerTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 1s** (`11 actionable tasks: 2 executed, 9 up-to-date`). `InMemoryManifestDraftApplierTest` ran **4 tests, 0 skipped, 0 failures, 0 errors**; `ManifestDraftApplicationPlannerTest` ran **4 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added a portable test-only isolated ZIP replacement probe. It writes a synthetic APK ZIP and its distinct replacement output solely under JUnit's temporary directory; the probe uses the in-memory AXML replacement, confirms the input SHA-256 and non-manifest bytes are unchanged, reparses the replacement manifest, and re-analyzes the output ZIP. It is not a production ZIP replacement service and does not touch project APKs, workspaces, drafts, exports, alignment, or signing state.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*IsolatedManifestZipReplacementTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 8s** (`11 actionable tasks: 2 executed, 9 up-to-date`). `IsolatedManifestZipReplacementTest` ran **1 test, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added `IsolatedManifestZipReplacer`. It accepts only `BuildWorkspace.root/input.apk`, validates the replacement manifest, applies entry-count/name/path/size/total/deadline bounds while streaming, and atomically creates only `BuildWorkspace.root/manifest-applied.apk` without overwrite. It rejects malformed/out-of-root inputs and has no access to `original.apk`, project drafts, exports, alignment, or signing. The replacement output is not yet connected to a build workflow or reinspection use case.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-manifest:test --tests '*IsolatedManifestZipReplacerTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 33s** (`11 actionable tasks: 8 executed, 3 up-to-date`). `IsolatedManifestZipReplacerTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
