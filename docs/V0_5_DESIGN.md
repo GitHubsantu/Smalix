@@ -20,6 +20,7 @@ Any change after alignment requires a new alignment and signature. No staged dra
 
 - Introduce a UI-independent build contract/result model and cancellation/progress reporting. A separate `engine-build` module is proposed only after approval; its dependencies would be `core-model`, `core-common`, and `engine-api`.
 - Before draft application, prove a reversible isolated-copy pipeline using an owned fixture and no signing key. No writer or output export in that verification slice.
+- Proposed post-Apktool manifest route: the lossless in-house AXML design is in `V0_5_MANIFEST_APPLICATION_DESIGN.md`; it requires owner approval before implementation.
 - Manifest/resource/DEX application must be separately validated in temporary output. Current v0.2â€“v0.4 draft formats are staged data, not APK writers.
 - Signing profiles contain alias/certificate metadata and an encrypted key reference only. Passwords are entered per operation and kept in memory only; no plaintext password/key is stored in SQLite, JSON, logs, or crash reports.
 
