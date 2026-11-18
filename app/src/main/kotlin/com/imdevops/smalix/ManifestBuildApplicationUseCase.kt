@@ -19,7 +19,7 @@ import java.nio.file.Files
 import java.time.Instant
 
 sealed interface ManifestBuildApplication {
-    data class Ready(val manifest: ManifestInfo) : ManifestBuildApplication
+    data class Ready(val output: ValidatedBuildOutput) : ManifestBuildApplication
     data class Rejected(val message: String) : ManifestBuildApplication
     data class Failed(val message: String) : ManifestBuildApplication
 }
@@ -34,6 +34,7 @@ class ManifestBuildApplicationUseCase(
     private val applier: InMemoryManifestDraftApplier = InMemoryManifestDraftApplier(),
     private val replacer: IsolatedManifestZipReplacer = IsolatedManifestZipReplacer(),
     private val reinspector: ManifestReplacementReinspectionUseCase = ManifestReplacementReinspectionUseCase(analyzer, manifestParser, dexDetector),
+    private val outputValidator: PostReinspectionBuildValidationUseCase = PostReinspectionBuildValidationUseCase(),
 ) {
     suspend fun apply(workspace: BuildWorkspace, draft: ManifestDraft, deadline: Instant): ManifestBuildApplication {
         val root = workspace.root.toAbsolutePath().normalize()
@@ -67,7 +68,10 @@ class ManifestBuildApplicationUseCase(
             is IsolatedManifestZipReplacement.Created -> Unit
         }
         return when (val result = reinspector.reinspect(workspace, deadline)) {
-            is ManifestReplacementReinspection.Ready -> ManifestBuildApplication.Ready(result.manifest)
+            is ManifestReplacementReinspection.Ready -> when (val validation = outputValidator.validate(workspace, result)) {
+                is PostReinspectionBuildValidation.Ready -> ManifestBuildApplication.Ready(validation.output)
+                is PostReinspectionBuildValidation.Rejected -> ManifestBuildApplication.Failed(validation.message)
+            }
             is ManifestReplacementReinspection.Rejected -> ManifestBuildApplication.Failed(result.message)
             is ManifestReplacementReinspection.InspectionFailed -> ManifestBuildApplication.Failed(result.message)
         }

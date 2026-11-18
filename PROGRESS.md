@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **post-reinspection build validation gate**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **isolated ZIP alignment adapter**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Design the post-reinspection build validation gate: bind the validated replacement archive/manifest/DEX outputs and its SHA-256 for a future alignment/signing stage, without adding export, alignment, signing, or UI controls.
+Design and implement a bounded Windows ZIP-alignment adapter that consumes only the validated build-local output and writes a distinct build-local aligned APK; require reinspection after alignment. Do not add signing, export, or UI controls.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -268,3 +268,5 @@ Design the post-reinspection build validation gate: bind the validated replaceme
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*ManifestBuildCoordinatorUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 46s** (`26 actionable tasks: 4 executed, 22 up-to-date`). `ManifestBuildCoordinatorUseCaseTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings and an existing deprecated apksig test-constructor warning were reported.
 - 2026-11-18: Extended `ManifestReplacementReinspectionUseCase` to run the DEX detector only after ZIP analysis and manifest parsing succeed. Its ready result now carries the validated DEX inventory, and `ManifestBuildApplicationUseCase` injects that detector into its default reinspection path. No output/export, alignment, signing, or UI control was added.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*ManifestReplacementReinspectionUseCaseTest' --tests '*ManifestBuildApplicationUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 19s** (`26 actionable tasks: 2 executed, 24 up-to-date`). `ManifestReplacementReinspectionUseCaseTest` ran **4 tests, 0 skipped, 0 failures, 0 errors**; `ManifestBuildApplicationUseCaseTest` ran **1 test, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for a user-local marker file and Gradle fell back to in-process compilation; deprecated-features warnings and the existing deprecated apksig test-constructor warning were reported.
+- 2026-11-18: Added `PostReinspectionBuildValidationUseCase`. It retains only the fixed `manifest-applied.apk` analyzer result (path, SHA-256, size), manifest, and DEX inventory after reinspection; it rejects a missing, mismatched, size-changed, or invalid-SHA output. The manifest application and coordinator results now carry that validated in-memory evidence. No alignment, signing, export, or UI control was added.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*PostReinspectionBuildValidationUseCaseTest' --tests '*ManifestBuildApplicationUseCaseTest' --tests '*ManifestBuildCoordinatorUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 25s** (`26 actionable tasks: 3 executed, 23 up-to-date`). `PostReinspectionBuildValidationUseCaseTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**; `ManifestBuildApplicationUseCaseTest` ran **1 test, 0 skipped, 0 failures, 0 errors**; `ManifestBuildCoordinatorUseCaseTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle fell back to in-process compilation; deprecated-features warnings and the existing deprecated apksig test-constructor warning were reported.

@@ -15,12 +15,13 @@ class ManifestBuildCoordinatorUseCaseTest {
     @Test fun `matching draft uses the fresh preflight workspace`() = runBlocking {
         val fixture = fixture(); var applied = 0
         val coordinator = ManifestBuildCoordinatorUseCase(fixture.preflight) { workspace, _, _ ->
-            applied++; assertEquals(fixture.build, workspace); ManifestBuildApplication.Ready(fixture.manifest)
+            applied++; assertEquals(fixture.build, workspace); ManifestBuildApplication.Ready(fixture.output)
         }
 
         val result = coordinator.apply(fixture.request, fixture.draft, Instant.MAX)
 
-        assertInstanceOf(ManifestBuildCoordinatorResult.Ready::class.java, result)
+        val ready = assertInstanceOf(ManifestBuildCoordinatorResult.Ready::class.java, result)
+        assertEquals(fixture.output, ready.output)
         assertEquals(1, fixture.builds.created); assertEquals(1, applied)
     }
 
@@ -51,10 +52,11 @@ class ManifestBuildCoordinatorUseCaseTest {
             builds, inspection,
         )
         val request = BuildRequest(UUID.randomUUID(), id, sha, RelativePath.of("exports/x.apk"), Instant.EPOCH)
-        return Fixture(preflight, builds, build, request, ManifestDraft.from(id, sha, manifest), manifest)
+        val output = ValidatedBuildOutput(ValidatedApk(build.root.resolve("manifest-applied.apk"), sha, 1, emptyList()), manifest, DexInfo(emptyList()))
+        return Fixture(preflight, builds, build, request, ManifestDraft.from(id, sha, manifest), output)
     }
 
-    private data class Fixture(val preflight: BuildPreflightUseCase, val builds: Builds, val build: BuildWorkspace, val request: BuildRequest, val draft: ManifestDraft, val manifest: ManifestInfo)
+    private data class Fixture(val preflight: BuildPreflightUseCase, val builds: Builds, val build: BuildWorkspace, val request: BuildRequest, val draft: ManifestDraft, val output: ValidatedBuildOutput)
     private class Builds(private val build: BuildWorkspace) : BuildWorkspaceStore {
         var created = 0
         override suspend fun create(workspace: Workspace, buildId: UUID): BuildWorkspace { created++; return build }

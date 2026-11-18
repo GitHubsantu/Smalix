@@ -47,7 +47,9 @@ class ManifestBuildApplicationUseCaseTest {
         val result = ManifestBuildApplicationUseCase(analyzer, parser, object : DexDetector { override suspend fun detect(apk: ValidatedApk) = InspectionResult.Success(com.imdevops.smalix.core.model.DexInfo(emptyList())) }).apply(workspace, draft, Instant.now().plusSeconds(30))
 
         val ready = assertInstanceOf(ManifestBuildApplication.Ready::class.java, result)
-        assertEquals(ManifestLabel.Literal("New"), ready.manifest.label)
+        assertEquals(ManifestLabel.Literal("New"), ready.output.manifest.label)
+        assertEquals(temp.resolve("manifest-applied.apk"), ready.output.archive.path)
+        assertEquals("a".repeat(64), ready.output.archive.sha256)
         assertEquals("Old", stringAtManifest(input))
         assertEquals("New", stringAtManifest(temp.resolve("manifest-applied.apk")))
     }
