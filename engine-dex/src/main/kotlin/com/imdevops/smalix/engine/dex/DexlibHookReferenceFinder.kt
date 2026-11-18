@@ -14,10 +14,10 @@ import org.jf.dexlib2.iface.reference.MethodReference
 /** Read-only bounded hook lookup; it never executes or alters DEX instructions. */
 class DexlibHookReferenceFinder(private val maxResults: Int = 10_000) : HookReferenceFinder {
     override suspend fun find(apk: ValidatedApk, target: HookSignature): InspectionResult<List<HookReference>> {
+        val results = mutableListOf<HookReference>()
         try {
         val allowed = apk.entries.map { it.normalizedPath }.filter { it.matches(Regex("classes(?:[2-9][0-9]*)?\\.dex")) }.toSet()
         val container = DexFileFactory.loadDexContainer(apk.path.toFile(), null)
-        val results = mutableListOf<HookReference>()
         for (name in container.dexEntryNames.filter(allowed::contains)) {
             val dex = container.getEntry(name)?.dexFile ?: continue
             for (clazz in dex.classes) for (method in clazz.methods) {
@@ -33,9 +33,9 @@ class DexlibHookReferenceFinder(private val maxResults: Int = 10_000) : HookRefe
                 }
             }
         }
-        InspectionResult.Success(results)
-    } catch (error: Exception) {
-        InspectionResult.Failure(AnalysisFailure.MalformedApk(error.message ?: "DEX hook scan failed."))
-    }
+        } catch (error: Exception) {
+            return InspectionResult.Failure(AnalysisFailure.MalformedApk(error.message ?: "DEX hook scan failed."))
+        }
+        return InspectionResult.Success(results)
     }
 }
