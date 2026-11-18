@@ -45,6 +45,8 @@ import com.imdevops.smalix.core.storage.FileSystemManifestDraftStore
 import com.imdevops.smalix.engine.apk.ZipApkAnalyzer
 import com.imdevops.smalix.engine.dex.ZipDexDetector
 import com.imdevops.smalix.engine.dex.BoundedDexReader
+import com.imdevops.smalix.engine.dex.DefaultDexSearch
+import com.imdevops.smalix.core.model.DexClassQuery
 import com.imdevops.smalix.engine.manifest.BinaryManifestParser
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftEditor
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftValidator
@@ -75,6 +77,7 @@ private fun SmalixScreen() {
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
     var dexIndex by remember { mutableStateOf<DexIndex?>(null) }
+    var dexSearch by remember { mutableStateOf("") }
     var draft by remember { mutableStateOf<ManifestDraft?>(null) }
     var draftLabel by remember { mutableStateOf("") }
     var draftVersionName by remember { mutableStateOf("") }
@@ -145,7 +148,17 @@ private fun SmalixScreen() {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 selected?.let { Text("Selected: ${it.displayName}\nSHA-256: ${it.originalSha256 ?: "not analyzed"}") }
-                dexIndex?.let { InspectorSection("DEX classes", it.classes.joinToString("\n") { it.descriptor }.ifBlank { "No classes" }) }
+                dexIndex?.let { index ->
+                    OutlinedTextField(dexSearch, { dexSearch = it }, Modifier.fillMaxWidth(), label = { Text("DEX class/package search (exact Ldescriptor; supported)") }, enabled = !busy)
+                    val term = dexSearch.trim()
+                    val found = when {
+                        term.isBlank() -> index.classes
+                        term.startsWith("L") && term.endsWith(";") -> DefaultDexSearch().find(index, DexClassQuery.ExactDescriptor(term))
+                        term.startsWith("L") -> index.classes.filter { it.descriptor.startsWith(term, ignoreCase = true) }
+                        else -> index.classes.filter { it.packageName.startsWith(term, ignoreCase = true) || it.descriptor.contains(term, ignoreCase = true) }
+                    }
+                    InspectorSection("DEX classes (${found.size})", found.take(500).joinToString("\n") { it.descriptor }.ifBlank { "No matching classes" } + if (found.size > 500) "\nShowing first 500 results." else "")
+                }
                 draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
                 draft?.let { current ->
                     OutlinedTextField(draftLabel, { draftLabel = it }, Modifier.fillMaxWidth(), label = { Text("App label") }, enabled = !busy)
