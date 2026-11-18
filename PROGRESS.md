@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner: recheck the ChuturPaan resource list after restarting the desktop app and report whether literals are now individually delimited. Then add the staged-resource desktop UI; no resource-table/APK apply work. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Owner: manually verify the ChuturPaan resource list and staged resource draft UI: select a literal, save a valid value, verify invalid color/dimen rejection, and confirm `original.apk`/`resources.arsc` are unchanged. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -214,3 +214,5 @@ Owner: recheck the ChuturPaan resource list after restarting the desktop app and
 - 2026-11-18: Implemented SQLite persistence for `ResourceDraftMetadata` only. `resource_drafts` stores draft/project IDs, original SHA-256, relative JSON path, revision, timestamps, and validation status; it has no value/payload/BLOB columns and cascades with its project. No resource table/APK write or UI was added.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-database:test --tests '*SqliteProjectRepositoryTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 56s** (`9 actionable tasks: 4 executed, 5 up-to-date`). The repository suite ran 4 tests with 0 failures/errors. Kotlin daemon access was denied for a user-local marker file and Gradle automatically fell back to in-process compilation; deprecated-features warnings were reported.
 - 2026-11-18: Added SHA-bound `ResourceDraftUseCase`: staged create/reopen/save/discard re-inspect the immutable original and require workspace/SQLite metadata/path/revision consistency. It never writes `resources.arsc` or APK bytes. Test log: `:app:test --tests '*ResourceDraftUseCaseTest'`: **BUILD SUCCESSFUL in 1m 29s** (`26 actionable tasks: 5 executed, 21 up-to-date`).
+- 2026-11-18: Added the staged-resource desktop selection/save UI. It exposes only literal string/color/dimen resource entries, opens a SHA-bound workspace draft, and shows an explicit immutable `resources.arsc` message. Raw references have no edit control. Desktop interaction has not yet been manually verified.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 49s** (`19 actionable tasks: 19 up-to-date`). This verifies compilation only; Gradle reported deprecated-features warnings.

@@ -44,10 +44,13 @@ import com.imdevops.smalix.core.model.Project
 import com.imdevops.smalix.core.model.SmaliDraft
 import com.imdevops.smalix.core.model.ResourceIndex
 import com.imdevops.smalix.core.model.ResourceQuery
+import com.imdevops.smalix.core.model.ResourceDraft
+import com.imdevops.smalix.core.model.ResourceValue
 import com.imdevops.smalix.core.model.ZipEntryInfo
 import com.imdevops.smalix.core.storage.FileSystemWorkspaceStore
 import com.imdevops.smalix.core.storage.FileSystemManifestDraftStore
 import com.imdevops.smalix.core.storage.FileSystemSmaliDraftStore
+import com.imdevops.smalix.core.storage.FileSystemResourceDraftStore
 import com.imdevops.smalix.engine.apk.ZipApkAnalyzer
 import com.imdevops.smalix.engine.dex.ZipDexDetector
 import com.imdevops.smalix.engine.dex.BoundedDexReader
@@ -61,6 +64,7 @@ import com.imdevops.smalix.engine.manifest.DefaultManifestDraftEditor
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftValidator
 import com.imdevops.smalix.engine.manifest.BinaryResourceTableReader
 import com.imdevops.smalix.engine.manifest.DefaultResourceSearch
+import com.imdevops.smalix.engine.manifest.DefaultResourceDraftValidator
 import java.awt.FileDialog
 import java.awt.Frame
 import java.nio.file.Path
@@ -85,6 +89,7 @@ private fun SmalixScreen() {
     val reopenInspection = remember { ReopenProjectInspectionUseCase(repository, workspaceStore, ProjectInspectionUseCase(repository, inspection)) }
     val drafts = remember { ManifestDraftUseCase(repository, workspaceStore, FileSystemManifestDraftStore(workspaceStore), repository, inspection, DefaultManifestDraftEditor(), DefaultManifestDraftValidator()) }
     val smaliDrafts = remember { SmaliDraftUseCase(repository, workspaceStore, FileSystemSmaliDraftStore(workspaceStore), repository, inspection, SmaliAssemblyDraftValidator()) }
+    val resourceDrafts = remember { ResourceDraftUseCase(repository, workspaceStore, FileSystemResourceDraftStore(workspaceStore), repository, inspection, DefaultResourceDraftValidator()) }
     var projects by remember { mutableStateOf(emptyList<Project>()) }
     var selected by remember { mutableStateOf<Project?>(null) }
     var status by remember { mutableStateOf("Choose an APK to create a read-only project.") }
@@ -92,6 +97,8 @@ private fun SmalixScreen() {
     var dexIndex by remember { mutableStateOf<DexIndex?>(null) }
     var resourceIndex by remember { mutableStateOf<ResourceIndex?>(null) }
     var resourceSearch by remember { mutableStateOf("") }
+    var resourceDraft by remember { mutableStateOf<ResourceDraft?>(null) }
+    var resourceDraftValue by remember { mutableStateOf("") }
     var dexSearch by remember { mutableStateOf("") }
     var selectedDexClass by remember { mutableStateOf<DexClass?>(null) }
     var selectedDexMethod by remember { mutableStateOf<DexMethod?>(null) }
@@ -238,6 +245,13 @@ private fun SmalixScreen() {
                     OutlinedTextField(resourceSearch, { resourceSearch = it }, Modifier.fillMaxWidth(), label = { Text("Resource name/value search") }, enabled = !busy)
                     val found = resourceSearch.trim().takeIf(String::isNotBlank)?.let { DefaultResourceSearch().find(index, ResourceQuery.Text(it)) } ?: index.entries
                     InspectorSection("Resources (${found.size})", found.take(500).joinToString("\n") { "${it.qualifiedName}${if (it.configuration.isBlank()) "" else " [${it.configuration}]"} = ${it.value}" }.ifBlank { "No supported literal resources" } + if (found.size > 500) "\nShowing first 500 results." else "")
+                    found.take(100).forEach { entry -> (entry.value as? ResourceValue.Literal)?.let { literal ->
+                        Button(enabled = !busy && selected?.originalSha256 != null, onClick = { val project = selected ?: return@Button; val proposed = ResourceDraft.from(project.id, project.originalSha256 ?: return@Button, entry) ?: return@Button; scope.launch { busy = true; when (val result = withContext(Dispatchers.IO) { resourceDrafts.openOrCreate(project.id, proposed, Instant.now().plusSeconds(120)) }) { is ResourceDraftSessionResult.Ready -> { resourceDraft = result.draft; resourceDraftValue = result.draft.proposedValue; status = "Staged resource draft opened. original.apk and resources.arsc are unchanged." }; else -> status = "Resource draft unavailable: $result" }; busy = false } }) { Text("Edit staged ${entry.qualifiedName}") }
+                    } }
+                    resourceDraft?.let { current ->
+                        OutlinedTextField(resourceDraftValue, { resourceDraftValue = it }, Modifier.fillMaxWidth(), label = { Text("Staged ${current.type.wireName} value") }, enabled = !busy)
+                        Button(enabled = !busy, onClick = { scope.launch { busy = true; when (val result = withContext(Dispatchers.IO) { resourceDrafts.saveValue(current.projectId, current.id, resourceDraftValue, Instant.now().plusSeconds(120)) }) { is ResourceDraftSaveResult.Saved -> { resourceDraft = result.draft; resourceDraftValue = result.draft.proposedValue; status = "Staged resource value saved. resources.arsc is unchanged." }; is ResourceDraftSaveResult.Rejected -> status = "Resource value was not saved: ${result.validation.messages.joinToString()}"; else -> status = "Resource draft unavailable." }; busy = false } }) { Text("Save staged resource value") }
+                    }
                 }
                 summary?.let { currentSummary ->
                     InspectorSection("Hook reference search", "Read-only invoke lookup. Enter an exact DEX signature.")
