@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Create a concise v0.4 resource explorer/editor design for owner approval. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Await owner approval of `docs/V0_4_DESIGN.md`, then implement only typed resource models/contracts and fixture-independent tests. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -190,3 +190,4 @@ Create a concise v0.4 resource explorer/editor design for owner approval. Keep a
 - 2026-11-18: Manual validation exposed that the metadata renderer emitted numeric method access flags (for example `.method 0x9`), which `smali` rejects. Corrected generated staged templates to emit Smali keywords (for example `public static`), preserving abstract/native bodyless declarations and type-correct return stubs. Existing drafts made with numeric flags must be discarded and reopened. Test log: `... .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 52s**. Desktop recheck remains pending.
 - 2026-11-18: Owner manually verified temporary assembly validation on `Customdialog.zenx(Landroid/app/Activity;)V`: a staged revision saved successfully with `.locals 0` and `return-void`; `original.apk` remained unchanged. Corrected future generated stubs to use `.locals`, not total `.registers`, so parameter methods validate correctly. v0.3 is complete for the staged/read-only scope; it does not replace source DEX/APK bytes or rebuild/export/sign.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-dex:test :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 1s**. Added parameter-method `.locals` temporary-assembly coverage. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; Gradle reported deprecated-features warnings.
+- 2026-11-18: Added proposed `docs/V0_4_DESIGN.md`: bounded in-house `resources.arsc` inspection, read-only explorer, and SHA-bound staged literal string/color/dimen drafts only. It defers resource compilation, archive replacement, rebuild, export, align, and signing to v0.5; no resource library/dependency is proposed or verified. No feature code or tests were added/run in this design-only step.
