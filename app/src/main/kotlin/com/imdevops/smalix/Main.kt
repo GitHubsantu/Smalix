@@ -47,6 +47,8 @@ import com.imdevops.smalix.engine.dex.ZipDexDetector
 import com.imdevops.smalix.engine.dex.BoundedDexReader
 import com.imdevops.smalix.engine.dex.DefaultDexSearch
 import com.imdevops.smalix.core.model.DexClassQuery
+import com.imdevops.smalix.core.model.HookSignature
+import com.imdevops.smalix.engine.dex.DexlibHookReferenceFinder
 import com.imdevops.smalix.engine.manifest.BinaryManifestParser
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftEditor
 import com.imdevops.smalix.engine.manifest.DefaultManifestDraftValidator
@@ -78,6 +80,11 @@ private fun SmalixScreen() {
     var summary by remember { mutableStateOf<InspectionSummary?>(null) }
     var dexIndex by remember { mutableStateOf<DexIndex?>(null) }
     var dexSearch by remember { mutableStateOf("") }
+    var hookClass by remember { mutableStateOf("Lcom/Epic/custom/dialog/Customdialog;") }
+    var hookMethod by remember { mutableStateOf("zenx") }
+    var hookParams by remember { mutableStateOf("(Landroid/app/Activity;)") }
+    var hookReturn by remember { mutableStateOf("V") }
+    var hookResults by remember { mutableStateOf(emptyList<com.imdevops.smalix.core.model.HookReference>()) }
     var draft by remember { mutableStateOf<ManifestDraft?>(null) }
     var draftLabel by remember { mutableStateOf("") }
     var draftVersionName by remember { mutableStateOf("") }
@@ -158,6 +165,23 @@ private fun SmalixScreen() {
                         else -> index.classes.filter { it.packageName.startsWith(term, ignoreCase = true) || it.descriptor.contains(term, ignoreCase = true) }
                     }
                     InspectorSection("DEX classes (${found.size})", found.take(500).joinToString("\n") { it.descriptor }.ifBlank { "No matching classes" } + if (found.size > 500) "\nShowing first 500 results." else "")
+                }
+                summary?.let { currentSummary ->
+                    InspectorSection("Hook reference search", "Read-only invoke lookup. Enter an exact DEX signature.")
+                    OutlinedTextField(hookClass, { hookClass = it }, Modifier.fillMaxWidth(), label = { Text("Target class descriptor") }, enabled = !busy)
+                    OutlinedTextField(hookMethod, { hookMethod = it }, Modifier.fillMaxWidth(), label = { Text("Target method") }, enabled = !busy)
+                    OutlinedTextField(hookParams, { hookParams = it }, Modifier.fillMaxWidth(), label = { Text("Parameters, e.g. (Landroid/app/Activity;)") }, enabled = !busy)
+                    OutlinedTextField(hookReturn, { hookReturn = it }, Modifier.fillMaxWidth(), label = { Text("Return descriptor") }, enabled = !busy)
+                    Button(enabled = !busy, onClick = { scope.launch {
+                        busy = true
+                        runCatching { HookSignature(hookClass, hookMethod, hookParams, hookReturn) }.onFailure { status = "Invalid hook signature: ${it.message}" }.onSuccess { target ->
+                            when (val result = withContext(Dispatchers.IO) { DexlibHookReferenceFinder().find(currentSummary.apk.archive, target) }) {
+                                is InspectionResult.Success -> { hookResults = result.value; status = "Read-only hook search found ${result.value.size} match(es)." }
+                                is InspectionResult.Failure -> status = "Hook search failed: ${result.error}"
+                            }
+                        }; busy = false
+                    } }) { Text("Search invokes") }
+                    if (hookResults.isNotEmpty()) InspectorSection("Hook matches (${hookResults.size})", hookResults.joinToString("\n") { "${it.dexEntryName} ${it.callerClassDescriptor}->${it.callerMethodName}${it.callerMethodDescriptor} @${it.codeOffset}${if (it.rangeInvoke) " /range" else ""}" })
                 }
                 draft?.let { InspectorSection("Staged manifest draft", "Revision ${it.revision}. Label: ${it.label ?: "none"}\nVersion: ${it.versionName ?: "none"} (${it.versionCode ?: "none"})\nThis is staged data only; original.apk is unchanged.") }
                 draft?.let { current ->
