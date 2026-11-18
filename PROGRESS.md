@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **approve expanded v1/v2/v3 signing boundary**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **design and approve explicit export boundary**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -10,7 +10,7 @@ Rule: plan → discuss → approve → implement small slices → test → updat
 | 0.2 | Manifest/activity/permission editing + validation | Complete (staged drafts only; no APK rewrite) |
 | 0.3 | DEX browser, staged Smali text/temporary validation, hook-reference analyzer | Complete (staged/read-only; no source DEX/APK replacement) |
 | 0.4 | Resource explorer/editor, validation | Complete (read-only explorer + SHA-bound staged literal drafts only; no resource-table/APK apply) |
-| 0.5 | Rebuild, align, sign, verify, export | In progress (isolated build preflight only; no mutation/output/signing) |
+| 0.5 | Rebuild, align, sign, verify, export | In progress (isolated manifest apply, align, v1/v2/v3 sign/verify, and final reinspection complete; export remains deliberately outside the approved signing boundary) |
 | 1.0 | Integration + stabilization | Not started |
 
 ## Platform decision
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner approval: implement the v1/v2/v3 signing slice in `docs/V0_5_SIGNING_DESIGN.md`, including explicit local PKCS#8/X.509 test-profile support; no export path or UI controls.
+Design and approve the export boundary: an explicit user-selected destination, non-overwrite behavior, final SHA-256 binding, and no persisted keys/passwords. No signing UI is currently approved.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -276,3 +276,5 @@ Owner approval: implement the v1/v2/v3 signing slice in `docs/V0_5_SIGNING_DESIG
 - 2026-11-18: Added proposed `docs/V0_5_SIGNING_DESIGN.md`. It limits the first signing implementation to the already-tested `apksig` PKCS12/v2/min-SDK-24 path, accepts only a reinspected build-local `aligned.apk`, writes only a distinct build-local `signed.apk`, verifies it, and requires final inspection. Persisted profile metadata has no secrets; passwords remain in memory as cleared `CharArray` values. V1, v3/v3.1, source stamps, key rotation, other keystores, certificate-store signing, profile persistence, UI, and export remain outside this slice.
 - Test log (2026-11-18): no tests run (documentation-only design step).
 - 2026-11-18: Owner requested selectable v1/v2/v3 signing and supplied `C:\Users\Santu\Downloads\testkey.pk8` plus `testkey.x509.pem`. Metadata-only inspection confirmed the two files exist; their contents were not read, copied, stored, logged, or committed. The signing design now proposes explicit test-only PKCS#8/X.509 support alongside PKCS12, requires at least one selected scheme (v2 SDK 24+, v3 SDK 28+), and retains v3.1/source stamps/rotation as unsupported. No signing code or tests were run in this design update.
+- 2026-11-18: Completed the approved `V0_5_SIGNING_DESIGN.md` boundary. Added `SigningProfile`/credential/request/result models; `ApkSigningService` and `SigningProfileRepository` contracts; SQLite metadata-only signing-profile persistence; `ApkSigSigningService` (`apksig:8.7.3`); and the app workflow that accepts only freshly reinspected `aligned.apk`, writes non-overwriting build-local `signed.apk`, then reruns ZIP/manifest/DEX inspection. The signer recomputes input SHA-256 and size, checks v2 min SDK 24 and v3 min SDK 28, verifies the certificate fingerprint, rejects invalid paths/existing output/expired input, and clears password arrays in `finally`. No key, certificate, password, APK bytes, signing UI, or export path is persisted.
+- Test log (2026-11-18): portable PKCS12 tests passed for v1-only, v2-only, v3-only, and v1+v2+v3; rejection tests cover stale input, existing output, and unsupported SDK. The owner-supplied explicit PKCS#8/X.509 pair was read in memory only through `SMALIX_TEST_KEY_PK8`/`SMALIX_TEST_CERT_PEM` and passed the v2 signing test; it was not copied, logged, stored, or committed. `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 3m 18s** (`40 actionable tasks: 8 executed, 32 up-to-date`). JUnit XML totals: **126 tests, 0 failures, 0 errors, 4 skipped**. Kotlin daemon marker access was denied and Gradle fell back to in-process compilation; deprecated-features warnings were reported.

@@ -20,6 +20,8 @@ import com.imdevops.smalix.core.model.ResourceIndex
 import com.imdevops.smalix.core.model.ResourceQuery
 import com.imdevops.smalix.core.model.ZipAlignmentRequest
 import com.imdevops.smalix.core.model.ZipAlignmentResult
+import com.imdevops.smalix.core.model.ApkSigningRequest
+import com.imdevops.smalix.core.model.ApkSigningResult
 
 interface ApkAnalyzer {
     suspend fun analyze(request: AnalysisRequest): InspectionResult<ApkAnalysis>
@@ -28,6 +30,11 @@ interface ApkAnalyzer {
 /** Aligns only a caller-selected, already validated build-local APK; implementations must not overwrite outputs. */
 interface ZipAligner {
     suspend fun align(request: ZipAlignmentRequest): ZipAlignmentResult
+}
+
+/** Signs only a caller-validated, isolated build APK and must never overwrite the output. */
+interface ApkSigningService {
+    suspend fun sign(request: ApkSigningRequest): ApkSigningResult
 }
 
 interface ManifestParser {

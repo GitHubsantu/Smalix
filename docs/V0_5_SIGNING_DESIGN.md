@@ -1,6 +1,6 @@
 # v0.5 signing boundary
 
-Status: proposed; implementation requires approval.
+Status: implemented and test-verified on 2026-11-18; no signing UI or export path is included.
 
 ## Requested signing options
 
@@ -30,4 +30,9 @@ Before signing, recompute/compare the aligned input's SHA-256 so post-alignment 
 - Wrong store/key password, wrong alias, missing key/certificate, invalid PEM/PKCS#8, changed input, existing output, signer timeout/cancellation, and invalid/unsupported SDK/scheme combinations all return typed failures without export.
 - Owner fixture later: authorized APK plus a disposable profile. Do not commit APKs, private keys, keystores, certificates, or passwords.
 
-No signing code, profile persistence, UI, or export is included in this design step.
+Implementation notes:
+
+- `ApkSigSigningService` is an `engine-apk` adapter for `apksig:8.7.3`. It recomputes the aligned input SHA-256 and size, signs through a unique temporary file, makes a non-overwriting move to `signed.apk`, verifies the output and certificate fingerprint, and clears both password arrays in `finally`.
+- `SigningProfileRepository` has a SQLite implementation. Its `signing_profiles` table contains exactly the metadata described above; it has no password, private-key, certificate-byte, BLOB, or APK-byte column.
+- `ApkSigningApplicationUseCase` accepts only the reinspected `aligned.apk` evidence and requires a fresh ZIP, manifest, and DEX reinspection of `signed.apk`. It has no export or UI path.
+- `ApkVerifier` selects the strongest applicable scheme for a multi-scheme APK. Single-scheme selections are checked through the corresponding verifier flag; a combined selection is verified as a whole with all selected signer records present and the expected certificate fingerprint.

@@ -13,6 +13,7 @@ import com.imdevops.smalix.core.model.Workspace
 import com.imdevops.smalix.core.model.BuildRequest
 import com.imdevops.smalix.core.model.BuildResult
 import com.imdevops.smalix.core.model.BuildWorkspace
+import com.imdevops.smalix.core.model.SigningProfile
 import java.nio.file.Path
 
 interface ProjectRepository {
@@ -90,6 +91,14 @@ interface ResourceDraftRepository {
 
 /** Performs lexical validation only; applying a draft remains outside v0.4. */
 interface ResourceDraftValidator { fun validate(draft: ResourceDraft): ResourceDraftValidation }
+
+/** Persists signing-profile metadata only: no key bytes, passwords, certificate bytes, or APK bytes. */
+interface SigningProfileRepository {
+    suspend fun findSigningProfile(profileId: java.util.UUID): SigningProfile?
+    suspend fun listSigningProfiles(): List<SigningProfile>
+    suspend fun saveSigningProfile(profile: SigningProfile)
+    suspend fun deleteSigningProfile(profileId: java.util.UUID)
+}
 
 /** Future isolated build contract; implementations must never mutate Workspace.originalApk. */
 interface BuildPipeline { suspend fun build(workspace: Workspace, request: BuildRequest): BuildResult }

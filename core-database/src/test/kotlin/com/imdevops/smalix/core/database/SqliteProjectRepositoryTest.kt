@@ -10,6 +10,9 @@ import com.imdevops.smalix.core.model.SmaliDraftMetadata
 import com.imdevops.smalix.core.model.SmaliDraftStatus
 import com.imdevops.smalix.core.model.ResourceDraftMetadata
 import com.imdevops.smalix.core.model.ResourceDraftStatus
+import com.imdevops.smalix.core.model.SigningKeyReferenceType
+import com.imdevops.smalix.core.model.SigningProfile
+import com.imdevops.smalix.core.model.SigningScheme
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -84,6 +87,31 @@ class SqliteProjectRepositoryTest {
         val updated = metadata.copy(revision = 1, updatedAt = Instant.ofEpochMilli(3_000), status = ResourceDraftStatus.INVALID)
         repository.saveResourceDraft(updated); assertEquals(updated, repository.findResourceDraft(metadata.draftId))
         repository.delete(project.id); assertNull(repository.findResourceDraft(metadata.draftId))
+    }
+
+    @Test fun `persists signing profile metadata without secret columns`() = runBlocking {
+        val database = temporaryDirectory.resolve("metadata.db")
+        val repository = SqliteProjectRepository(database)
+        val profile = SigningProfile(
+            UUID.randomUUID(), "Disposable profile", SigningKeyReferenceType.PKCS12, "C:/keys/disposable.p12", null,
+            "release", "a".repeat(64), setOf(SigningScheme.V1, SigningScheme.V2),
+            Instant.ofEpochMilli(1_000), Instant.ofEpochMilli(2_000), true,
+        )
+
+        repository.saveSigningProfile(profile)
+
+        assertEquals(profile, repository.findSigningProfile(profile.id))
+        assertEquals(listOf(profile), repository.listSigningProfiles())
+        java.sql.DriverManager.getConnection("jdbc:sqlite:${database.toAbsolutePath()}").use { connection ->
+            connection.createStatement().use { statement ->
+                statement.executeQuery("PRAGMA table_info(signing_profiles)").use { columns ->
+                    val names = buildSet { while (columns.next()) add(columns.getString("name")) }
+                    assertEquals(false, names.any { it.contains("password", true) || it.contains("private", true) || it.contains("blob", true) })
+                }
+            }
+        }
+        repository.deleteSigningProfile(profile.id)
+        assertNull(repository.findSigningProfile(profile.id))
     }
 
     private fun project() = Project(
