@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Design the bounded hook-reference query slice and obtain approval before implementation. Keep v0.3 read-only: no DEX/Smali write, assembly, APK rebuild, export, or signing.
+Implement bounded DEX method/proto/code-item parsing required for real hook-reference matching. Keep v0.3 read-only: no DEX/Smali write, assembly, APK rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -150,3 +150,6 @@ Design the bounded hook-reference query slice and obtain approval before impleme
 - 2026-11-18: Added the read-only desktop DEX browser action. It indexes only the already validated archive and displays class descriptors; it has no DEX/Smali write action. Owner manually verified the browser action. Milestones updated: v0.2 complete (staged drafts only), v0.3 in progress.
 - 2026-11-18: Added `DexSmaliRenderer`, a bounded read-only rendering of indexed class/member metadata. It explicitly does not decode method bodies and provides no editor, save, assembler, or APK write path.
 - Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Renderer test verifies class, field, method, and code-offset text output. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
+- 2026-11-18: Added proposed hook-query design to `docs/V0_3_DESIGN.md`. It requires explicit signatures, bounded `invoke-*`/`invoke-*/range` scanning, informational results only, and method/code-item parsing before implementation. No query code or tests were added.
+- 2026-11-18: Owner approved the hook-query increment. Implemented slice 1 only: typed `HookSignature`/`HookReference` models and `HookReferenceFinder` contract. No instruction parsing or hook matching exists yet.
+- Test log (2026-11-18): `./gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Added hook-signature invariant coverage. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.

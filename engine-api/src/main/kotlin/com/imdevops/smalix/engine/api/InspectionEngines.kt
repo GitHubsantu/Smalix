@@ -6,6 +6,8 @@ import com.imdevops.smalix.core.model.DexInfo
 import com.imdevops.smalix.core.model.DexClass
 import com.imdevops.smalix.core.model.DexClassQuery
 import com.imdevops.smalix.core.model.DexIndex
+import com.imdevops.smalix.core.model.HookReference
+import com.imdevops.smalix.core.model.HookSignature
 import com.imdevops.smalix.core.model.InspectionResult
 import com.imdevops.smalix.core.model.ManifestInfo
 import com.imdevops.smalix.core.model.ManifestDraft
@@ -32,6 +34,10 @@ interface DexReader {
 
 interface DexSearch {
     fun find(index: DexIndex, query: DexClassQuery): List<DexClass>
+}
+
+interface HookReferenceFinder {
+    suspend fun find(apk: ValidatedApk, target: HookSignature): InspectionResult<List<HookReference>>
 }
 
 interface ManifestDraftEditor {

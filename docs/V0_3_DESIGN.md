@@ -39,3 +39,9 @@ Use a small single-DEX APK, owned multidex APK, compact DEX with invalid offsets
 2. Bounded class/package index and search with tests.
 3. Desktop read-only browser and manual verification.
 4. Read-only Smali and hook-query design/implementation after separate approval.
+
+## Hook-query increment (proposed)
+
+Input is an explicit signature: target class descriptor, method name, parameter descriptor list, and return descriptor; package-prefix queries are allowed only when clearly marked as a broad search. The reader scans bounded method instruction streams for `invoke-*` and `invoke-*/range`, returning only caller class/method, target signature, DEX entry, and code offset. Results are informational: no automatic risk label, deletion, patch, or export.
+
+The current descriptor-only reader cannot support this safely yet. First add bounded method/proto/code-item parsing with malformed-offset tests, then add the query engine and generated normal/range-invoke fixtures. Each scan checks byte/instruction/result limits and cancellation/deadline. Approval is required before this code.

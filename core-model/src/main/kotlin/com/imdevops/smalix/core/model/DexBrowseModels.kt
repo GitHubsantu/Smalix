@@ -44,3 +44,12 @@ sealed interface DexClassQuery {
     data class ExactDescriptor(val descriptor: String) : DexClassQuery
     data class PackagePrefix(val packageName: String) : DexClassQuery
 }
+
+data class HookSignature(val classDescriptor: String, val methodName: String, val parameterDescriptor: String, val returnDescriptor: String) {
+    init { require(classDescriptor.matches(Regex("^L[^;]+;$"))); require(methodName.isNotBlank()); require(parameterDescriptor.startsWith("(") && parameterDescriptor.endsWith(")")); require(returnDescriptor.isNotBlank()) }
+    val methodDescriptor: String get() = parameterDescriptor + returnDescriptor
+}
+
+data class HookReference(val dexEntryName: String, val callerClassDescriptor: String, val callerMethodName: String, val callerMethodDescriptor: String, val target: HookSignature, val codeOffset: Long, val rangeInvoke: Boolean) {
+    init { require(codeOffset >= 0) }
+}

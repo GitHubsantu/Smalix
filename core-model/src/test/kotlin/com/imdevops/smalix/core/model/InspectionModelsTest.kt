@@ -34,4 +34,9 @@ class InspectionModelsTest {
         val clazz = DexClass("classes.dex", "Lsample/Main;", 0, emptyList(), emptyList())
         assertThrows(IllegalArgumentException::class.java) { DexIndex(listOf(DexEntry("classes.dex", 1)), listOf(clazz, clazz)) }
     }
+
+    @Test fun `hook signature requires descriptor-shaped input`() {
+        assertThrows(IllegalArgumentException::class.java) { HookSignature("sample.Main", "run", "()", "V") }
+        assertEquals("()V", HookSignature("Lsample/Main;", "run", "()", "V").methodDescriptor)
+    }
 }
