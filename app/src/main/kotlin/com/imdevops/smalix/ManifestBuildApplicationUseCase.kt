@@ -6,6 +6,7 @@ import com.imdevops.smalix.core.model.InspectionResult
 import com.imdevops.smalix.core.model.ManifestDraft
 import com.imdevops.smalix.core.model.ManifestInfo
 import com.imdevops.smalix.engine.api.ApkAnalyzer
+import com.imdevops.smalix.engine.api.DexDetector
 import com.imdevops.smalix.engine.api.ManifestParser
 import com.imdevops.smalix.engine.manifest.BinaryXmlManifestDocumentLoader
 import com.imdevops.smalix.engine.manifest.InMemoryManifestDraftApplier
@@ -27,11 +28,12 @@ sealed interface ManifestBuildApplication {
 class ManifestBuildApplicationUseCase(
     private val analyzer: ApkAnalyzer,
     private val manifestParser: ManifestParser,
+    private val dexDetector: DexDetector,
     private val documentLoader: BinaryXmlManifestDocumentLoader = BinaryXmlManifestDocumentLoader(),
     private val planner: ManifestDraftApplicationPlanner = ManifestDraftApplicationPlanner(),
     private val applier: InMemoryManifestDraftApplier = InMemoryManifestDraftApplier(),
     private val replacer: IsolatedManifestZipReplacer = IsolatedManifestZipReplacer(),
-    private val reinspector: ManifestReplacementReinspectionUseCase = ManifestReplacementReinspectionUseCase(analyzer, manifestParser),
+    private val reinspector: ManifestReplacementReinspectionUseCase = ManifestReplacementReinspectionUseCase(analyzer, manifestParser, dexDetector),
 ) {
     suspend fun apply(workspace: BuildWorkspace, draft: ManifestDraft, deadline: Instant): ManifestBuildApplication {
         val root = workspace.root.toAbsolutePath().normalize()

@@ -10,6 +10,7 @@ import com.imdevops.smalix.core.model.ManifestLabel
 import com.imdevops.smalix.core.model.ProjectId
 import com.imdevops.smalix.core.model.ValidatedApk
 import com.imdevops.smalix.engine.api.ApkAnalyzer
+import com.imdevops.smalix.engine.api.DexDetector
 import com.imdevops.smalix.engine.api.ManifestParser
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
@@ -43,7 +44,7 @@ class ManifestBuildApplicationUseCaseTest {
             override suspend fun parse(apk: ValidatedApk) = InspectionResult.Success(if (apk.path.fileName.toString() == "input.apk") old else info("New"))
         }
 
-        val result = ManifestBuildApplicationUseCase(analyzer, parser).apply(workspace, draft, Instant.now().plusSeconds(30))
+        val result = ManifestBuildApplicationUseCase(analyzer, parser, object : DexDetector { override suspend fun detect(apk: ValidatedApk) = InspectionResult.Success(com.imdevops.smalix.core.model.DexInfo(emptyList())) }).apply(workspace, draft, Instant.now().plusSeconds(30))
 
         val ready = assertInstanceOf(ManifestBuildApplication.Ready::class.java, result)
         assertEquals(ManifestLabel.Literal("New"), ready.manifest.label)

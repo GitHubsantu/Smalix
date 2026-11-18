@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **replacement DEX reinspection**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **post-reinspection build validation gate**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Extend replacement-output reinspection to run the DEX detector after ZIP and manifest validation, before any future build stage; no export, alignment, or signing is authorized.
+Design the post-reinspection build validation gate: bind the validated replacement archive/manifest/DEX outputs and its SHA-256 for a future alignment/signing stage, without adding export, alignment, signing, or UI controls.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -266,3 +266,5 @@ Extend replacement-output reinspection to run the DEX detector after ZIP and man
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*ManifestBuildApplicationUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 7s** (`26 actionable tasks: 6 executed, 20 up-to-date`). `ManifestBuildApplicationUseCaseTest` ran **1 test, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings and an existing deprecated apksig test-constructor warning were reported.
 - 2026-11-18: Added `ManifestBuildCoordinatorUseCase`. It requires the staged draft project/SHA-256 to match the build request before it invokes existing SHA-bound preflight, and passes only the resulting fresh `BuildWorkspace` to the integrated manifest workflow. It has no original-APK, export, alignment, or signing path.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*ManifestBuildCoordinatorUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 46s** (`26 actionable tasks: 4 executed, 22 up-to-date`). `ManifestBuildCoordinatorUseCaseTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle automatically fell back to in-process compilation; deprecated-features warnings and an existing deprecated apksig test-constructor warning were reported.
+- 2026-11-18: Extended `ManifestReplacementReinspectionUseCase` to run the DEX detector only after ZIP analysis and manifest parsing succeed. Its ready result now carries the validated DEX inventory, and `ManifestBuildApplicationUseCase` injects that detector into its default reinspection path. No output/export, alignment, signing, or UI control was added.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:test --tests '*ManifestReplacementReinspectionUseCaseTest' --tests '*ManifestBuildApplicationUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 19s** (`26 actionable tasks: 2 executed, 24 up-to-date`). `ManifestReplacementReinspectionUseCaseTest` ran **4 tests, 0 skipped, 0 failures, 0 errors**; `ManifestBuildApplicationUseCaseTest` ran **1 test, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for a user-local marker file and Gradle fell back to in-process compilation; deprecated-features warnings and the existing deprecated apksig test-constructor warning were reported.

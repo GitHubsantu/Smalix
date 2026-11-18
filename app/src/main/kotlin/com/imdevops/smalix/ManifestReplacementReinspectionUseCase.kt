@@ -2,16 +2,18 @@ package com.imdevops.smalix
 
 import com.imdevops.smalix.core.model.AnalysisRequest
 import com.imdevops.smalix.core.model.BuildWorkspace
+import com.imdevops.smalix.core.model.DexInfo
 import com.imdevops.smalix.core.model.InspectionResult
 import com.imdevops.smalix.core.model.ManifestInfo
 import com.imdevops.smalix.core.model.ValidatedApk
 import com.imdevops.smalix.engine.api.ApkAnalyzer
+import com.imdevops.smalix.engine.api.DexDetector
 import com.imdevops.smalix.engine.api.ManifestParser
 import java.nio.file.Files
 import java.time.Instant
 
 sealed interface ManifestReplacementReinspection {
-    data class Ready(val archive: ValidatedApk, val manifest: ManifestInfo) : ManifestReplacementReinspection
+    data class Ready(val archive: ValidatedApk, val manifest: ManifestInfo, val dex: DexInfo) : ManifestReplacementReinspection
     data class Rejected(val message: String) : ManifestReplacementReinspection
     data class InspectionFailed(val message: String) : ManifestReplacementReinspection
 }
@@ -20,6 +22,7 @@ sealed interface ManifestReplacementReinspection {
 class ManifestReplacementReinspectionUseCase(
     private val analyzer: ApkAnalyzer,
     private val manifestParser: ManifestParser,
+    private val dexDetector: DexDetector,
 ) {
     suspend fun reinspect(workspace: BuildWorkspace, deadline: Instant): ManifestReplacementReinspection {
         val root = workspace.root.toAbsolutePath().normalize()
@@ -31,9 +34,13 @@ class ManifestReplacementReinspectionUseCase(
             is InspectionResult.Failure -> return ManifestReplacementReinspection.InspectionFailed(result.error.toString())
             is InspectionResult.Success -> result.value.archive
         }
-        return when (val result = manifestParser.parse(archive)) {
+        val manifest = when (val result = manifestParser.parse(archive)) {
+            is InspectionResult.Failure -> return ManifestReplacementReinspection.InspectionFailed(result.error.toString())
+            is InspectionResult.Success -> result.value
+        }
+        return when (val result = dexDetector.detect(archive)) {
             is InspectionResult.Failure -> ManifestReplacementReinspection.InspectionFailed(result.error.toString())
-            is InspectionResult.Success -> ManifestReplacementReinspection.Ready(archive, result.value)
+            is InspectionResult.Success -> ManifestReplacementReinspection.Ready(archive, manifest, result.value)
         }
     }
 
