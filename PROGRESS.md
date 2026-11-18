@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement bounded DEX method/proto/code-item parsing required for real hook-reference matching. Keep v0.3 read-only: no DEX/Smali write, assembly, APK rebuild, export, or signing.
+Implement generated method/code-item fixtures and bounded normal/`/range` invoke matching for explicit hook signatures. Keep v0.3 read-only: no DEX/Smali write, assembly, APK rebuild, export, or signing.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -153,3 +153,5 @@ Implement bounded DEX method/proto/code-item parsing required for real hook-refe
 - 2026-11-18: Added proposed hook-query design to `docs/V0_3_DESIGN.md`. It requires explicit signatures, bounded `invoke-*`/`invoke-*/range` scanning, informational results only, and method/code-item parsing before implementation. No query code or tests were added.
 - 2026-11-18: Owner approved the hook-query increment. Implemented slice 1 only: typed `HookSignature`/`HookReference` models and `HookReferenceFinder` contract. No instruction parsing or hook matching exists yet.
 - Test log (2026-11-18): `./gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Added hook-signature invariant coverage. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; tests passed.
+- 2026-11-18: Extended `BoundedDexReader` with bounded proto, method-ID, and class-data ULEB parsing so indexed classes can include method signatures/access flags/code offsets. Invoke instruction matching is not implemented yet.
+- Test log (2026-11-18): `./gradlew.bat :engine-dex:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Existing generated DEX parser/search/renderer tests passed after the extension. Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation.
