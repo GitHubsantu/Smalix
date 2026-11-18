@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Implement generated method/code-item fixtures and bounded normal/`/range` invoke matching for explicit hook signatures. Keep v0.3 read-only: no DEX/Smali write, assembly, APK rebuild, export, or signing.
+Add a small app-level staged Smali draft use case: open/create only after reinspection SHA matching, reconcile workspace text with SQLite metadata, and discard both safely. Do not add a Smali assembler/library or DEX/APK write path without separate approval and verification.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -172,3 +172,5 @@ Implement generated method/code-item fixtures and bounded normal/`/range` invoke
 - Test log (2026-11-18): `./gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation; owner manually verified the history UI.
 - 2026-11-18: Implemented staged Smali slice 1: SHA-bound per-method draft/metadata/validation models and validator contract. No assembler/library/APK/DEX write path was added.
 - Test log (2026-11-18): `./gradlew.bat :core-model:test :engine-api:test --no-daemon --console=plain`: **BUILD SUCCESSFUL** (command exit code 0). Kotlin daemon access to user-local temporary marker files was denied, so Gradle fell back to in-process compilation.
+- 2026-11-18: Implemented staged Smali persistence slice. `SmaliDraftStore` now atomically stores per-method, Base64-encoded text payloads only at `work/dex/<draft-id>.smali`; it binds load to workspace project and expected original SHA-256, rejects malformed/stale/cross-project drafts, and never touches `original.apk`. Added `SmaliDraftRepository` and SQLite `smali_drafts` metadata table (IDs, SHA, relative path, revision, timestamps, status only; no text/APK blobs), with project-delete cascade. Also corrected a pre-existing Kotlin control-flow compilation error in the read-only `DexlibHookReferenceFinder`; hook-search behavior was not changed.
+- Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :core-model:test :engine-api:test :core-storage:test :core-database:test --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 13s** (`17 actionable tasks: 7 executed, 10 up-to-date`). Tests cover atomic save/replacement/load/discard, malformed/stale/cross-project rejection, unchanged original bytes, and SQLite metadata cascade. Kotlin daemon access was denied for user-local marker files, so Gradle fell back to in-process compilation; tests passed. Gradle reported deprecated-features warnings.

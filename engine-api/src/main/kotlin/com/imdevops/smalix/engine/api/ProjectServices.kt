@@ -50,4 +50,19 @@ interface ManifestDraftRepository {
     suspend fun deleteManifestDraft(projectId: ProjectId)
 }
 
+/** Stores staged Smali text under a validated workspace; it must never write APK or DEX bytes. */
+interface SmaliDraftStore {
+    suspend fun load(workspace: Workspace, draftId: java.util.UUID, expectedOriginalApkSha256: String): SmaliDraft?
+    suspend fun save(workspace: Workspace, draft: SmaliDraft)
+    suspend fun discard(workspace: Workspace, draftId: java.util.UUID)
+}
+
+/** Persists Smali draft metadata only; the text remains in the workspace. */
+interface SmaliDraftRepository {
+    suspend fun findSmaliDraft(draftId: java.util.UUID): com.imdevops.smalix.core.model.SmaliDraftMetadata?
+    suspend fun listSmaliDrafts(projectId: ProjectId): List<com.imdevops.smalix.core.model.SmaliDraftMetadata>
+    suspend fun saveSmaliDraft(metadata: com.imdevops.smalix.core.model.SmaliDraftMetadata)
+    suspend fun deleteSmaliDraft(draftId: java.util.UUID)
+}
+
 interface SmaliDraftValidator { fun validate(draft: SmaliDraft): SmaliValidation }

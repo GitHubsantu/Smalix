@@ -46,8 +46,8 @@ Input is an explicit signature: target class descriptor, method name, parameter 
 
 The current descriptor-only reader cannot support this safely yet. First add bounded method/proto/code-item parsing with malformed-offset tests, then add the query engine and generated normal/range-invoke fixtures. Each scan checks byte/instruction/result limits and cancellation/deadline. Approval is required before this code.
 
-## Smali staged-edit increment (proposed)
+## Smali staged-edit increment
 
-Smali editing is staged text only under `work/dex/`; `original.apk` and source DEX remain immutable. The first slice creates an explicit per-method draft, validates syntax/assembly in an isolated temporary directory, and never writes an APK, replaces DEX in an APK, exports, or signs.
+Smali editing is staged text only under `work/dex/`; `original.apk` and source DEX remain immutable. The implemented storage slice atomically saves each per-method text draft as `work/dex/<draft-id>.smali`, verifies project/SHA binding on load, and never writes an APK, replaces DEX in an APK, exports, or signs.
 
-Each draft binds original APK SHA-256, DEX entry, class/method descriptor, revision, timestamps, and validation status. SQLite stores metadata/path only; staged Smali text stays in the workspace. SHA mismatch, missing method, malformed Smali, duplicate draft target, limits, or assembly failure produce errors. `smali` needs separate license/JDK verification. Test stale SHA, invalid Smali, cleanup, limits, and unchanged original SHA-256. Rebuild stays deferred to v0.5.
+Each draft binds original APK SHA-256, DEX entry, class/method descriptor, revision, timestamps, and validation status. SQLite stores metadata/path only; staged Smali text stays in the workspace. The next slice must add a use case that rejects SHA/method/metadata mismatches before opening or saving a draft. Syntax/assembly validation, duplicate-target handling, and limits remain pending; `smali` needs separate license/JDK verification. Tests cover stale/malformed/cross-project storage input and unchanged original bytes. Rebuild stays deferred to v0.5.

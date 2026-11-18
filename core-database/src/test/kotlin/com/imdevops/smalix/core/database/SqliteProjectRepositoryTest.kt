@@ -6,6 +6,8 @@ import com.imdevops.smalix.core.model.ProjectId
 import com.imdevops.smalix.core.model.RelativePath
 import com.imdevops.smalix.core.model.ManifestDraftMetadata
 import com.imdevops.smalix.core.model.ManifestDraftValidationStatus
+import com.imdevops.smalix.core.model.SmaliDraftMetadata
+import com.imdevops.smalix.core.model.SmaliDraftStatus
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
@@ -51,6 +53,21 @@ class SqliteProjectRepositoryTest {
         repository.save(metadata)
         repository.delete(project.id)
         assertNull(repository.findDraft(project.id))
+    }
+
+    @Test fun `persists smali draft metadata and cascades it with its project`() = runBlocking {
+        val repository = SqliteProjectRepository(temporaryDirectory.resolve("metadata.db"))
+        val project = project()
+        repository.create(project)
+        val metadata = SmaliDraftMetadata(
+            draftId = UUID.randomUUID(), projectId = project.id, originalApkSha256 = "a".repeat(64),
+            relativePath = RelativePath.of("projects/${project.id.value}/work/dex/draft.smali"), revision = 0,
+            createdAt = Instant.ofEpochMilli(1_000), updatedAt = Instant.ofEpochMilli(2_000), status = SmaliDraftStatus.VALID,
+        )
+        repository.saveSmaliDraft(metadata)
+        assertEquals(listOf(metadata), repository.listSmaliDrafts(project.id))
+        repository.delete(project.id)
+        assertNull(repository.findSmaliDraft(metadata.draftId))
     }
 
     private fun project() = Project(

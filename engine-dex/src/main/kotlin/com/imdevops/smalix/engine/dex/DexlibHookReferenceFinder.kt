@@ -14,7 +14,7 @@ import org.jf.dexlib2.iface.reference.MethodReference
 /** Read-only bounded hook lookup; it never executes or alters DEX instructions. */
 class DexlibHookReferenceFinder(private val maxResults: Int = 10_000) : HookReferenceFinder {
     override suspend fun find(apk: ValidatedApk, target: HookSignature): InspectionResult<List<HookReference>> {
-        return try {
+        try {
         val allowed = apk.entries.map { it.normalizedPath }.filter { it.matches(Regex("classes(?:[2-9][0-9]*)?\\.dex")) }.toSet()
         val container = DexFileFactory.loadDexContainer(apk.path.toFile(), null)
         val results = mutableListOf<HookReference>()

@@ -6,15 +6,18 @@ import com.imdevops.smalix.core.model.ProjectId
 import com.imdevops.smalix.core.model.RelativePath
 import com.imdevops.smalix.core.model.ManifestDraftMetadata
 import com.imdevops.smalix.core.model.ManifestDraftValidationStatus
+import com.imdevops.smalix.core.model.SmaliDraftMetadata
+import com.imdevops.smalix.core.model.SmaliDraftStatus
 import com.imdevops.smalix.engine.api.ProjectRepository
 import com.imdevops.smalix.engine.api.ManifestDraftRepository
+import com.imdevops.smalix.engine.api.SmaliDraftRepository
 import java.nio.file.Path
 import java.sql.Connection
 import java.sql.DriverManager
 import java.time.Instant
 import java.util.UUID
 
-class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestDraftRepository {
+class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestDraftRepository, SmaliDraftRepository {
     private val url = "jdbc:sqlite:${databasePath.toAbsolutePath().normalize()}"
 
     init {
@@ -117,6 +120,45 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestD
         }
     }
 
+    override suspend fun findSmaliDraft(draftId: UUID): SmaliDraftMetadata? = connection().use { connection ->
+        connection.prepareStatement("SELECT * FROM smali_drafts WHERE draft_id = ?").use { statement ->
+            statement.setString(1, draftId.toString())
+            statement.executeQuery().use { results -> if (results.next()) results.smaliDraftMetadata() else null }
+        }
+    }
+
+    override suspend fun listSmaliDrafts(projectId: ProjectId): List<SmaliDraftMetadata> = connection().use { connection ->
+        connection.prepareStatement("SELECT * FROM smali_drafts WHERE project_id = ? ORDER BY updated_at_ms DESC, draft_id ASC").use { statement ->
+            statement.setString(1, projectId.value.toString())
+            statement.executeQuery().use { results -> buildList { while (results.next()) add(results.smaliDraftMetadata()) } }
+        }
+    }
+
+    override suspend fun saveSmaliDraft(metadata: SmaliDraftMetadata) {
+        connection().use { connection ->
+            connection.prepareStatement(
+                """INSERT INTO smali_drafts (draft_id, project_id, original_apk_sha256, relative_path, revision, created_at_ms, updated_at_ms, status)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                   ON CONFLICT(draft_id) DO UPDATE SET original_apk_sha256=excluded.original_apk_sha256, relative_path=excluded.relative_path,
+                   revision=excluded.revision, updated_at_ms=excluded.updated_at_ms, status=excluded.status""",
+            ).use { statement ->
+                statement.setString(1, metadata.draftId.toString()); statement.setString(2, metadata.projectId.value.toString())
+                statement.setString(3, metadata.originalApkSha256); statement.setString(4, metadata.relativePath.value)
+                statement.setLong(5, metadata.revision); statement.setLong(6, metadata.createdAt.toEpochMilli())
+                statement.setLong(7, metadata.updatedAt.toEpochMilli()); statement.setString(8, metadata.status.name)
+                statement.executeUpdate()
+            }
+        }
+    }
+
+    override suspend fun deleteSmaliDraft(draftId: UUID) {
+        connection().use { connection ->
+            connection.prepareStatement("DELETE FROM smali_drafts WHERE draft_id = ?").use { statement ->
+                statement.setString(1, draftId.toString()); statement.executeUpdate()
+            }
+        }
+    }
+
     private fun connection(): Connection = DriverManager.getConnection(url).also { connection ->
         connection.createStatement().use { it.execute("PRAGMA foreign_keys = ON") }
     }
@@ -136,6 +178,13 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestD
                     original_size_bytes INTEGER,
                     analysis_status TEXT NOT NULL,
                     analysis_error TEXT
+                )""",
+            )
+            statement.execute(
+                """CREATE TABLE IF NOT EXISTS smali_drafts (
+                    draft_id TEXT PRIMARY KEY NOT NULL, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+                    original_apk_sha256 TEXT NOT NULL, relative_path TEXT NOT NULL, revision INTEGER NOT NULL,
+                    created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL, status TEXT NOT NULL
                 )""",
             )
             statement.execute(
@@ -188,6 +237,13 @@ class SqliteProjectRepository(databasePath: Path) : ProjectRepository, ManifestD
         originalApkSha256 = getString("original_apk_sha256"), relativePath = RelativePath.of(getString("relative_path")),
         revision = getLong("revision"), createdAt = Instant.ofEpochMilli(getLong("created_at_ms")),
         updatedAt = Instant.ofEpochMilli(getLong("updated_at_ms")), validationStatus = ManifestDraftValidationStatus.valueOf(getString("validation_status")),
+    )
+
+    private fun java.sql.ResultSet.smaliDraftMetadata() = SmaliDraftMetadata(
+        draftId = UUID.fromString(getString("draft_id")), projectId = ProjectId(UUID.fromString(getString("project_id"))),
+        originalApkSha256 = getString("original_apk_sha256"), relativePath = RelativePath.of(getString("relative_path")),
+        revision = getLong("revision"), createdAt = Instant.ofEpochMilli(getLong("created_at_ms")),
+        updatedAt = Instant.ofEpochMilli(getLong("updated_at_ms")), status = SmaliDraftStatus.valueOf(getString("status")),
     )
 
     private fun java.sql.ResultSet.getLongOrNull(column: String): Long? = getLong(column).takeUnless { wasNull() }
