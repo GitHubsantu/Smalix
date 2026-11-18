@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Owner: manually verify the ChuturPaan resource list and staged resource draft UI: select a literal, save a valid value, verify invalid color/dimen rejection, and confirm `original.apk`/`resources.arsc` are unchanged. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
+Implement confirmation-gated discard for staged resource drafts in the desktop UI, then recheck staged resource draft lifecycle. No resource-table/APK apply work is authorized. Keep all APK output/rebuild/export/signing work deferred to v0.5.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -216,3 +216,4 @@ Owner: manually verify the ChuturPaan resource list and staged resource draft UI
 - 2026-11-18: Added SHA-bound `ResourceDraftUseCase`: staged create/reopen/save/discard re-inspect the immutable original and require workspace/SQLite metadata/path/revision consistency. It never writes `resources.arsc` or APK bytes. Test log: `:app:test --tests '*ResourceDraftUseCaseTest'`: **BUILD SUCCESSFUL in 1m 29s** (`26 actionable tasks: 5 executed, 21 up-to-date`).
 - 2026-11-18: Added the staged-resource desktop selection/save UI. It exposes only literal string/color/dimen resource entries, opens a SHA-bound workspace draft, and shows an explicit immutable `resources.arsc` message. Raw references have no edit control. Desktop interaction has not yet been manually verified.
 - Test log (2026-11-18): `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :app:compileKotlin --no-daemon --console=plain`: **BUILD SUCCESSFUL in 49s** (`19 actionable tasks: 19 up-to-date`). This verifies compilation only; Gradle reported deprecated-features warnings.
+- 2026-11-18: Owner reported the staged-resource desktop UI works. This is manual confirmation of the implemented selection/save path only; it does not imply any `resources.arsc`/APK apply behavior.
