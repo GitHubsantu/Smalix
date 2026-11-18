@@ -1,6 +1,6 @@
 # Smalix — Progress File
 
-Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **signing-boundary design**
+Status: **v0.5 in progress** · Platform: **Windows desktop (decided)** · Next slice: **approve signing boundary before implementation**
 Rule: plan → discuss → approve → implement small slices → test → update this file.
 
 ## Milestones
@@ -68,7 +68,7 @@ Assumptions (change if wrong): package `com.imdevops.smalix`, JDK 17, own manife
 Owner verified the Gradle build with JDK 17, Kotlin 2.1.10, Compose 1.7.3, and `:app` run. This agent did not rerun it.
 
 ## Next step
-Design the signing boundary: an encrypted signing-profile metadata contract plus an isolated signer that accepts only a reinspected `aligned.apk`, keeps passwords in memory, and verifies its own output. Do not add an export path or UI controls.
+Owner approval: implement the bounded v2/PKCS12 signing slice in `docs/V0_5_SIGNING_DESIGN.md`; no export path or UI controls.
 
 ## Log
 - Spec received and reviewed. Progress file created.
@@ -273,3 +273,5 @@ Design the signing boundary: an encrypted signing-profile metadata contract plus
 - 2026-11-18: Added `ZipAligner`/`WindowsZipAligner` and the app-side isolated alignment workflow. The adapter accepts an injected local executable, refuses missing tools/input changes/existing outputs, uses a unique build-local temporary APK and non-overwriting final move, caps the alignment plus verification at the request deadline or two minutes, discards tool output, and runs `zipalign -c -v 4` before accepting `aligned.apk`. The app workflow accepts only validated `manifest-applied.apk` evidence and reruns ZIP, manifest, and DEX inspection on `aligned.apk`. No signing, export, or UI control was added.
 - Test log (2026-11-18): with `SMALIX_ZIPALIGN=C:\Users\Santu\AppData\Local\Android\Sdk\build-tools\35.0.0\zipalign.exe`, `$env:GRADLE_USER_HOME = (Join-Path $PWD '.gradle-user-home'); .\gradlew.bat :engine-apk:test :app:test --tests '*WindowsZipAlignerTest' --tests '*ZipAlignmentApplicationUseCaseTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 2m 35s** (`28 actionable tasks: 7 executed, 21 up-to-date`). `WindowsZipAlignerTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**, including real-tool alignment and original-SHA preservation; `ZipAlignmentApplicationUseCaseTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**. Kotlin daemon access was denied for user-local marker files and Gradle fell back to in-process compilation; deprecated-features warnings and the existing deprecated apksig test-constructor warning were reported.
 - Test log (2026-11-18): after changing the final move to Java's non-overwriting move contract, with the same `SMALIX_ZIPALIGN`, `.\gradlew.bat :engine-apk:test --tests '*WindowsZipAlignerTest' --no-daemon --console=plain`: **BUILD SUCCESSFUL in 1m 19s** (`9 actionable tasks: 4 executed, 5 up-to-date`). `WindowsZipAlignerTest` ran **2 tests, 0 skipped, 0 failures, 0 errors**, including real-tool alignment and original-SHA preservation. Kotlin daemon access was denied for user-local marker files and Gradle fell back to in-process compilation; deprecated-features warnings were reported.
+- 2026-11-18: Added proposed `docs/V0_5_SIGNING_DESIGN.md`. It limits the first signing implementation to the already-tested `apksig` PKCS12/v2/min-SDK-24 path, accepts only a reinspected build-local `aligned.apk`, writes only a distinct build-local `signed.apk`, verifies it, and requires final inspection. Persisted profile metadata has no secrets; passwords remain in memory as cleared `CharArray` values. V1, v3/v3.1, source stamps, key rotation, other keystores, certificate-store signing, profile persistence, UI, and export remain outside this slice.
+- Test log (2026-11-18): no tests run (documentation-only design step).
